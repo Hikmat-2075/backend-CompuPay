@@ -1,8 +1,8 @@
-import fs from 'fs';
-import path from 'path';
+import fs from "fs";
+import path from "path";
 
 function generateEmailIndoTemplate(verificationUrl) {
-    return `
+	return `
       <!DOCTYPE html>
       <html lang="id">
           <head>
@@ -57,7 +57,7 @@ function generateEmailIndoTemplate(verificationUrl) {
 }
 
 function generateEmailEnglishTemplate(verificationUrl) {
-    return `
+	return `
       <!DOCTYPE html>
       <html lang="en">
           <head>
@@ -112,7 +112,7 @@ function generateEmailEnglishTemplate(verificationUrl) {
 }
 
 function generateVerifEmail(otp) {
-    return `
+	return `
       <!DOCTYPE html>
       <html lang="id">
           <head>
@@ -168,7 +168,7 @@ function generateVerifEmail(otp) {
 }
 
 export {
-    generateEmailIndoTemplate,
-    generateEmailEnglishTemplate,
-    generateVerifEmail,
+	generateEmailIndoTemplate,
+	generateEmailEnglishTemplate,
+	generateVerifEmail,
 };

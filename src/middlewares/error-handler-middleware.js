@@ -1,97 +1,94 @@
-import logger from "../utils/logger.js";
 import BaseError from "../base_classes/base-error.js";
 import StatusCodes from "../errors/status-codes.js";
-import { INVALID_CREDENTIALS, SERVER_PROBLEM } from "../errors/error-codes.js";
-import useragent from "useragent";
-import db from "../config/db.js";
-
+import { PrismaService } from "../common/services/prisma.service.js";
+import logger from "../utils/logger.js";
 
 export const errorHandler = (err, req, res, _next) => {
-  const statusCode = Object.values(StatusCodes).find((code) => code.message === err.statusCode);
+	const statusCode = Object.values(StatusCodes).find(
+		(code) => code.message === err.statusCode,
+	);
 
-  if (err.name === "ValidationError") {
-    const errorObj = {};
+	if (err.name === "ValidationError") {
+		const errorObj = {};
 
-    for (const error of err.details) {
-      errorObj[error.path] = [error.message];
-    }
+		for (const error of err.details) {
+			errorObj[error.path] = [error.message];
+		}
 
-    return res.status(StatusCodes.BAD_REQUEST.code).json({
-      code: 400,
-      status: StatusCodes.BAD_REQUEST.message,
-      recordsTotal: 0,
-      data: null,
-      errors: {
-        name: err.name,
-        message: err.message,
-        validation: errorObj,
-      },
-    });
-  }
+		if (err.source === "query") {
+			return res.status(StatusCodes.INVALID_PARAMS.code).json({
+				code: StatusCodes.INVALID_PARAMS.code,
+				status: StatusCodes.INVALID_PARAMS.codeName,
+				message: StatusCodes.INVALID_PARAMS.message,
+				pagination: null,
+				data: null,
+				errors: {
+					name: err.name,
+					message: err.message,
+					validation: errorObj,
+				},
+			});
+		}
 
-  //   if (err.name == "SequelizeValidationError") {
-  //     return res.status(400).json(err);
-  //   }
+		return res.status(StatusCodes.UNPROCESSABLE_ENTITY.code).json({
+			code: StatusCodes.UNPROCESSABLE_ENTITY.code,
+			status: StatusCodes.UNPROCESSABLE_ENTITY.codeName,
+			message: StatusCodes.UNPROCESSABLE_ENTITY.message,
+			pagination: null,
+			data: null,
+			errors: {
+				name: err.name,
+				message: err.message,
+				validation: errorObj,
+			},
+		});
+	}
 
-  if (err instanceof BaseError) {
-    console.error(err);
-    return res.status(statusCode.code).json({
-      code: err.errorCode,
-      status: err.statusCode,
-      recordsTotal: 0,
-      data: null,
-      errors: {
-        name: err.errorName,
-        message: err.message,
-        validation: null
-      },
-    });
-  }
-  console.error(err);
+	if (err.name === "MulterError") {
+		// console.log(err);
+		return res.status(StatusCodes.BAD_REQUEST.code).json({
+			code: StatusCodes.BAD_REQUEST.code,
+			status: StatusCodes.BAD_REQUEST.codeName,
+			message: StatusCodes.BAD_REQUEST.message,
+			pagination: null,
+			data: null,
+			errors: {
+				name: err.name,
+				message: err.field,
+				validation: null,
+			},
+		});
+	}
 
-  // ambil user id
-  const user = db.user.findUnique({
-    where: {
-      email: req.body.email,
-    },
-    select: {
-      id: true,
-    },
-  })
+	if (err instanceof BaseError) {
+		return res.status(err.statusCode).json({
+			code: err.statusCode, // e.g. "BAD_REQUEST"
+			status: err.errorCode, // e.g. 400
+			message: err.message, // e.g. "Bad Request"
+			pagination: null,
+			data: null,
+			errors: {
+				name: err.errorName, // e.g. "Bad Request"
+				message: err.message, // custom message
+				validation: null,
+			},
+		});
+	}
 
-  const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+	console.error("❌ Error:", err);
 
-  // ambil device
-  const userAgent = useragent.parse(req.headers["user-agent"]);
-  const device = userAgent.toString();
-
-  const url = req.originalUrl;
-
-  // method
-  const method = req.method;
-
-  const newLog = db.systemLog.create({
-    data: {
-      userId: user.id,
-      action: url,
-      ipAddress: ip,
-      device: device,
-      method: method,
-      description: err.message
-    }
-  });
-
-  return res.status(StatusCodes.INTERNAL_SERVER.code).json({
-    code: 500,
-    status: StatusCodes.INTERNAL_SERVER.message,
-    recordsTotal: 0,
-    data: null,
-    errors: {
-      name: err.name,
-      message: err.message,
-      validation: null
-    },
-  });
+	return res.status(StatusCodes.INTERNAL_SERVER_ERROR.code).json({
+		code: StatusCodes.INTERNAL_SERVER_ERROR.code,
+		status: StatusCodes.INTERNAL_SERVER_ERROR.codeName,
+		message: StatusCodes.INTERNAL_SERVER_ERROR.message,
+		pagination: null,
+		data: null,
+		errors: {
+			name: err.name,
+			message: err.message,
+			validation: null,
+		},
+	});
 };
 
 export default errorHandler;

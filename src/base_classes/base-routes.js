@@ -1,16 +1,16 @@
 import { Router } from "express";
 
 class BaseRoutes {
-  router;
+	router;
 
-  constructor() {
-    this.router = Router();
-    this.routes();
-  }
+	constructor() {
+		this.router = Router();
+		this.routes();
+	}
 
-  routes() {
-    throw new Error("Routes method must be implemented in child classes.");
-  }
+	routes() {
+		throw new Error("Routes method must be implemented in child classes.");
+	}
 }
 
 export default BaseRoutes;

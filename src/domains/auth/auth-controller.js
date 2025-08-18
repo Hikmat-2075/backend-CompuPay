@@ -1,76 +1,67 @@
+import BaseError from "../../base_classes/base-error.js";
+import S3Service from "../../common/services/s3.service.js";
 import { successResponse } from "../../utils/response.js";
 import AuthService from "./auth-service.js";
 
 class AuthController {
-    async login(req, res) {
-        const { email, password } = req.body;
+	async login(req, res) {
+		const { email, password } = req.body;
 
-        const token = await AuthService.login(email, password);
+		const data = await AuthService.login(email, password);
 
-        if (!token) {
-            throw Error("Failed to login");
-        }
+		res
+			.cookie("refresh_token", data.refresh_token, {
+				httpOnly: true,
+				secure: process.env.NODE_ENV === "production",
+				sameSite: "strict",
+				maxAge: 7 * 24 * 60 * 60 * 1000,
+			})
+			.header("Authorization", `Bearer ${data.access_token}`);
 
-        return successResponse(res, { token });
-    }
+		return successResponse(res, data.unit, "Login successful");
+	}
 
-    async register(req, res) {
-        const { name, username, email, password, phone_number, otp_verification } = req.body;
+	async register(req, res) {
+		let data = req.body;
 
-        const message = await AuthService.register({ name, username, email, password, phone_number, otp_verification });
+		const message = await AuthService.register(data);
 
-        if (!message) {
-            throw Error("Failed to register");
-        }
+		return successResponse(res, message);
+	}
 
-        return successResponse(res, message);
-    }
+	async refreshToken(req, res) {
+		const { refresh_token } = req.cookies;
 
-    async refreshToken(req, res) {
-        const { refresh_token } = req.body;
+		if (!refresh_token) {
+			throw new BaseError.unauthorized("Refresh token not found");
+		}
 
-        const token = await AuthService.refreshToken(refresh_token);
+		const token = await AuthService.refreshToken(refresh_token);
 
-        if (!token) {
-            throw Error("Failed to refresh token");
-        }
+		res.header("Authorization", `Bearer ${token.access_token}`);
 
-        return successResponse(res, { access_token: token });
-    }
+		return successResponse(res, null, "Token refreshed successfully");
+	}
 
-    async getProfile(req, res){
-        const user = await AuthService.getProfile(req.app.locals.user.id);
+	async getProfile(req, res) {
+		if (!req.user) {
+			throw Error("Failed to get user profile");
+		}
 
-        if (!user) {
-            throw Error("Failed to get user profile");
-        }
-        
-        return successResponse(res, user);
-    }
+		return successResponse(
+			res,
+			req.user,
+			"User profile retrieved successfully",
+		);
+	}
 
-    async updateProfile(req, res){
-        const { name, email, phone_number } = req.body;
+	async sendOtp(req, res) {
+		const { email } = req.body;
 
-        const user = await AuthService.updateProfile(req.app.locals.user.id, { name, email, phone_number });
+		const otp = await AuthService.sendOtp(email);
 
-        if (!user) {
-            throw Error("Failed to update user profile");
-        }
-
-        return successResponse(res, user);
-    }
-
-    async sendOtp(req, res) {
-        const { email } = req.body;
-
-        const message = await AuthService.sendOtp(email);
-
-        if (!message) {
-            throw Error("Failed to send OTP");
-        }
-
-        return successResponse(res, message);
-    }
+		return successResponse(res, null, "OTP sent successfully");
+	}
 }
 
 export default new AuthController();

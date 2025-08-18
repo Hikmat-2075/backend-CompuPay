@@ -1,259 +1,223 @@
 import BaseError from "../../base_classes/base-error.js";
 
-import { generateVerifEmail } from "../../utils/bodyEmail.js";
-import sendEmail from "../../utils/sendEmail.js";
 import joi from "joi";
-import db from "../../config/db.js";
 import { parseJWT, generateToken } from "../../utils/jwtTokenConfig.js";
 import { matchPassword, hashPassword } from "../../utils/passwordConfig.js";
+import { PrismaService } from "../../common/services/prisma.service.js";
+import MailerService from "../../common/services/mailer.service.js";
+import logger from "../../utils/logger.js";
 
 class AuthService {
-    async login(email, password) {
-        let user = await db.user.findUnique({
-            where: {
-                email: email
-            }
-        })
+	constructor() {
+		this.prisma = new PrismaService();
+		this.mailer = new MailerService();
+		this.OTP_EXPIRES_IN = process.env.OTP_EXPIRES_IN || "5m";
+	}
 
-        if (!user) {
-            throw BaseError.badRequest("Invalid credentials");   
-        }
+	async login(email, password) {
+		let user = await this.prisma.user.findFirst({
+			where: {
+				email: email,
+			},
+		});
 
-        const isMatch = await matchPassword(password, user.password);
+		if (!user) {
+			throw BaseError.badRequest("Invalid credentials");
+		}
 
-        if (!isMatch) {
-            throw BaseError.badRequest("Invalid credentials");
-        }
+		const isMatch = await matchPassword(password, user.password);
 
-        if (!user.verified_at){
-            const token = generateToken(user.id, "5m");
-            const verificationLink = `${process.env.BE_URL}/api/v1/auth/verify/${token}`;
-            const emailHtml = generateVerifEmail(verificationLink);
+		if (!isMatch) {
+			throw BaseError.badRequest("Invalid credentials");
+		}
 
-            sendEmail(
-                user.email,
-                "Verifikasi Email dari Hiji: Omni Ads Channel",
-                "Terima kasih telah mendaftar di Marhein! Untuk melanjutkan, silakan verifikasi email Anda dengan mengklik tautan berikut:",
-                emailHtml
-            );
+		delete user.password;
 
-            throw BaseError.badRequest("Email not verified, Please check your email to verify your account.");
-        }
+		const accessToken = generateToken({ id: user.id, type: "access" }, "1d");
+		const refreshToken = generateToken(
+			{ id: user.id, type: "refresh" },
+			"365d",
+		);
 
-        const accessToken = generateToken(user.id, "1d");
-        const refreshToken = generateToken(user.id, "365d");
+		return { access_token: accessToken, refresh_token: refreshToken, user };
+	}
 
-        return { access_token: accessToken, refresh_token: refreshToken };
-    }
+	async register(data) {
+		const emailExist = await this.prisma.user.findFirst({
+			where: {
+				email: data.email,
+			},
+		});
 
-    async register(data) {
-        const emailExist = await db.user.findUnique({
-            where: {
-                email: data.email
-            }
-        })
+		if (emailExist) {
+			let validation = "";
+			let stack = [];
 
-        if (emailExist) {
-            let validation = "";
-            let stack = [];
+			validation += "Email already taken.";
 
-            validation += "Email already taken.";
+			stack.push({
+				message: "Email already taken.",
+				path: ["email"],
+			});
 
-            stack.push({
-                message: "Email already taken.",
-                path: ["email"]
-            });
+			throw new joi.ValidationError(validation, stack);
+		}
 
-            throw new joi.ValidationError(validation, stack);
-        }
+		const otpExist = await this.prisma.otp.findFirst({
+			where: {
+				email: data.email,
+				otp: data.otp_verification,
+			},
+		});
 
-        const otpExist = await db.otp.findFirst({
-            where: {
-                email: data.email,
-                otp_code: data.otp_verification
-            }
-        })
+		if (!otpExist) {
+			let validation = "";
+			let stack = [];
 
-        if (!otpExist) {
-            let validation = "";
-            let stack = [];
+			validation += "Invalid OTP.";
 
-            validation += "Invalid OTP.";
+			stack.push({
+				message: "Invalid OTP.",
+				path: ["otp_verification"],
+			});
 
-            stack.push({
-                message: "Invalid OTP.",
-                path: ["otp_verification"]
-            });
+			throw new joi.ValidationError(validation, stack);
+		}
 
-            throw new joi.ValidationError(validation, stack);
-        }
+		if (otpExist.expired_at < new Date()) {
+			let validation = "";
+			let stack = [];
 
-        if (otpExist.expired_at < new Date()) {
-            let validation = "";
-            let stack = [];
+			validation += "OTP expired.";
 
-            validation += "OTP expired.";
+			stack.push({
+				message: "OTP expired.",
+				path: ["otp_verification"],
+			});
 
-            stack.push({
-                message: "OTP expired.",
-                path: ["otp_verification"]
-            });
+			throw new joi.ValidationError(validation, stack);
+		}
 
-            throw new joi.ValidationError(validation, stack);
-        }
+		await this.prisma.$transaction(async (tx) => {
+			await tx.otp.delete({
+				where: {
+					id: otpExist.id,
+				},
+			});
 
-        await db.otp.delete({
-            where: {
-                id: otpExist.id
-            }
-        })
+			const createduser = await tx.user.create({
+				data: {
+					email: data.email,
+					password: await hashPassword(data.password),
+				},
+			});
 
-        const createdUser = await db.user.create({
-            data: {
-                name: data.name,
-                email: data.email,
-                password: await hashPassword(data.password),
-                phone_number: data.phone_number,
-                verified_at: new Date()
-            }
-        })
-        
-        if (!createdUser) {
-            throw Error("Failed to register");
-        }
+			if (!createduser) {
+				throw Error("Failed to register");
+			}
+		});
 
-        const accessToken = generateToken(createdUser.id, "1d");
-        const refreshToken = generateToken(createdUser.id, "365d");
+		return {
+			message: "Registration successful",
+		};
+	}
 
-        return { message: "User register successfully", access_token: accessToken, refresh_token: refreshToken };
-    }
+	async refreshToken(refreshToken) {
+		if (!refreshToken) {
+			logger.error("Refresh token not provided");
+			throw BaseError.unauthorized("Refresh token not found");
+		}
 
-    async refreshToken(token) {
-        const decoded = parseJWT(token);
+		const decoded = parseJWT(refreshToken);
 
-        if (!decoded) {
-            throw BaseError.unauthorized("Invalid token");
-        }
+		if (!decoded || decoded.type !== "refresh") {
+			logger.error("Invalid refresh token");
+			throw BaseError.unauthorized("Invalid refresh token");
+		}
 
-        const user = await db.user.findUnique({
-            where: {
-                id: decoded.id
-            }
-        })
+		const user = await this.prisma.user.findFirst({
+			where: {
+				id: decoded.id,
+			},
+		});
 
-        if (!user) {
-            throw BaseError.notFound("User not found");
-        }
+		if (!user) {
+			logger.error("user not found for refresh token ID:", decoded.id);
+			throw BaseError.unauthorized("user not found");
+		}
 
-        const accessToken = generateToken(user.id, "1d");
+		const newAccessToken = generateToken(
+			{
+				id: user.id,
+				from: "KC",
+				type: "access",
+			},
+			"1d",
+		);
 
-        return accessToken;
-    }
+		return { access_token: newAccessToken };
+	}
 
-    async getProfile(id) {
-        const user = await db.user.findUnique({
-            where: {
-                id: id
-            },
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                phone_number: true,
-                created_at: true,
-                updated_at: true
-            }
-        });
+	async sendOtp(email) {
+		const otp = await this.prisma.$transaction(async (tx) => {
+			const userExists = await tx.user.findFirst({
+				where: { email },
+			});
 
-        if (!user) {
-            throw BaseError.notFound("User not found");
-        }
+			if (userExists) {
+				throw BaseError.badRequest("Email already registered");
+			}
 
-        return user;
-    }
+			// 5 digit OTP
+			const otp = Math.floor(10000 + Math.random() * 90000).toString();
 
-    async updateProfile(id, data) {
-        const user = await db.user.findUnique({
-            where: {
-                id: id
-            },
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                phone_number: true,
-                created_at: true,
-                updated_at: true
-            }
-        });
+			const expiredAt = new Date(
+				Date.now() + this._parseExpiry(this.OTP_EXPIRES_IN),
+			);
 
-        if (!user) {
-            throw BaseError.notFound("User not found");
-        }
+			await tx.otp.create({
+				data: {
+					email,
+					otp,
+					expired_at: expiredAt,
+				},
+			});
 
-        const updatedUser = await db.user.update({
-            where: {
-                id: id
-            },
-            data: {
-                name: data.name,
-                email: data.email,
-                phone_number: data.phone_number
-            }
-        });
+			return otp;
+		});
 
-        return updatedUser;
-    }
+		this.mailer
+			.sendMail({
+				to: email,
+				subject: "Your OTP Code",
+				text: `Your OTP code is ${otp}. It is valid for 5 minutes.`,
+			})
+			.then(() => {
+				logger.info(`OTP sent to ${email}`);
+			})
+			.catch((error) => {
+				logger.error(`Failed to send OTP to ${email}:`, error);
+			});
 
-    async sendOtp(email) {
-        const userExist = await db.user.findUnique({
-            where: {
-                email: email
-            }
-        })
+		return otp;
+	}
 
-        if (userExist) {
-            let validation = "";
-            let stack = [];
+	_parseExpiry(duration) {
+		const match = duration.match(/^(\d+)([smhd])$/); // cocokkan angka + 1 huruf (s/m/h/d)
+		if (!match) throw new Error("Invalid OTP_EXPIRES_IN format");
 
-            validation += "Email already taken.";
+		const value = parseInt(match[1]);
+		const user = match[2];
 
-            stack.push({
-                message: "Email already taken.",
-                path: ["email"]
-            });
+		const multipliers = {
+			s: 1000,
+			m: 60 * 1000,
+			h: 60 * 60 * 1000,
+			d: 24 * 60 * 60 * 1000,
+		};
 
-            throw new joi.ValidationError(validation, stack);
-        }
-
-        const { otp, expiresAt } = await this.generateOtp();
-
-        await db.otp.create({
-            data: {
-                otp_code: otp,
-                email: email,
-                expired_at: expiresAt
-            }
-        })
-
-        const emailHtml = generateVerifEmail(otp);
-
-        sendEmail(
-            email,
-            "Verifikasi Email dari Marhein",
-            "Terima kasih telah mendaftar di Marhein! Untuk melanjutkan, silakan verifikasi email Anda dengan otp berikut:",
-            emailHtml
-        );
-
-        return { message: "OTP sent successfully" };
-    }
-
-    async generateOtp(){
-        const otp = Math.floor(100000 + Math.random() * 900000);
-        const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
-
-        return { otp, expiresAt };
-    }
+		return value * multipliers[user];
+	}
 }
 
 export default new AuthService();
