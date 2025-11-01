@@ -14,9 +14,6 @@ const registerSchema = Joi.object({
 		"string.empty": "Email is required.",
 		"string.email": "Email must be a valid email address.",
 	}),
-	otp_verification: Joi.string().required().min(5).messages({
-		"string.empty": "OTP verification is required.",
-	}),
 	password: Joi.string()
 		.required()
 		.min(8)

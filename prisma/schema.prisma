@@ -13,24 +13,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Otp {
-  id              String   @id @default(uuid())
-  email           String
-  otp             String
-  created_at      DateTime @default(now())
-  updated_at      DateTime? @updatedAt
-  expired_at      DateTime
-  deleted_at      DateTime?
-
-  @@map("otps")
-}
-
 model User {
   id            String   @id @default(uuid())
   email         String 
   password      String
   profile_uri String?
-  verified_at DateTime?
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
   deleted_at    DateTime?

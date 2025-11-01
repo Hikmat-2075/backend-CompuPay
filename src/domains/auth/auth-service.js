@@ -63,47 +63,9 @@ class AuthService {
 			throw new joi.ValidationError(validation, stack);
 		}
 
-		const otpExist = await this.prisma.otp.findFirst({
-			where: {
-				email: data.email,
-				otp: data.otp_verification,
-			},
-		});
-
-		if (!otpExist) {
-			let validation = "";
-			let stack = [];
-
-			validation += "Invalid OTP.";
-
-			stack.push({
-				message: "Invalid OTP.",
-				path: ["otp_verification"],
-			});
-
-			throw new joi.ValidationError(validation, stack);
-		}
-
-		if (otpExist.expired_at < new Date()) {
-			let validation = "";
-			let stack = [];
-
-			validation += "OTP expired.";
-
-			stack.push({
-				message: "OTP expired.",
-				path: ["otp_verification"],
-			});
-
-			throw new joi.ValidationError(validation, stack);
-		}
+		
 
 		await this.prisma.$transaction(async (tx) => {
-			await tx.otp.delete({
-				where: {
-					id: otpExist.id,
-				},
-			});
 
 			const createduser = await tx.user.create({
 				data: {
