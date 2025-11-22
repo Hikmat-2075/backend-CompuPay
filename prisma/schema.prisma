@@ -13,14 +13,59 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  KARYAWAN
+}
+
 model User {
   id            String   @id @default(uuid())
   email         String 
   password      String
-  profile_uri String?
+  profile_uri   String?
+  role          Role @default(ADMIN)
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
   deleted_at    DateTime?
 
   @@map("users")
 }
+
+enum WorkStatus {
+  CONTRACT
+  PERMANENT
+  INTERN
+}
+
+enum VerificationStatus {
+  ACCEPTED
+  DECLINE
+  WAIT
+}
+
+model Employee {
+  id             String     @id @default(uuid())
+  full_name      String
+  nip            String     @unique
+  email          String     @unique
+  password       String
+  position       String     
+  department     String     
+  phone_number   String
+  address        String
+  birth_date     DateTime
+  join_date      DateTime
+  work_status    WorkStatus
+  base_salary    Int?
+  verification   VerificationStatus @default(WAIT)
+
+  created_at     DateTime   @default(now())
+  updated_at     DateTime   @updatedAt
+  deleted_at     DateTime?
+
+  @@map("employee")
+}
+
+
+

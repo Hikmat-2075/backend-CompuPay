@@ -5,32 +5,88 @@ const loginSchema = Joi.object({
 		"string.empty": "Email is required.",
 	}),
 	password: Joi.string().required().messages({
-		"string.empty": "Password is required.",
+		"string.empty": "Password is required.",	
 	}),
 });
 
 const registerSchema = Joi.object({
+	full_name: Joi.string().required().messages({
+		"string.empty": "Full name is required."
+	}),
+
+	nip: Joi.string()
+		.pattern(/^[0-9]+$/)
+		.length(18)
+		.required()
+		.messages({
+			"string.empty": "NIP is required.",
+			"string.length": "NIP must be exactly 18 characters long.",
+			"string.pattern.base": "NIP must contain only digits."
+    }),
+
 	email: Joi.string().email().required().messages({
 		"string.empty": "Email is required.",
-		"string.email": "Email must be a valid email address.",
+		"string.email": "Email must be a valid email address."
 	}),
-	password: Joi.string()
+
+	position: Joi.string().required().messages({
+		"string.empty": "Position is required."
+	}),
+
+	department: Joi.string().required().messages({
+		"string.empty": "Department is required."
+	}),
+
+	phone_number: Joi.string()
+		.pattern(/^[0-9]+$/)
+		.min(10)
+		.max(15)
 		.required()
+		.messages({
+			"string.empty": "Phone number is required.",
+			"string.pattern.base": "Phone number must contain only digits.",
+			"string.min": "Phone number must be at least 10 digits.",
+			"string.max": "Phone number cannot exceed 15 digits."
+    }),
+
+	address: Joi.string().required().messages({
+		"string.empty": "Address is required."
+	}),
+
+	birth_date: Joi.date().required().messages({
+		"date.base": "Birth date must be a valid date.",
+		"any.required": "Birth date is required."
+	}),
+
+	join_date: Joi.date().required().messages({
+		"date.base": "Join date must be a valid date.",
+		"any.required": "Join date is required."
+	}),
+
+	work_status: Joi.string()
+		.valid("CONTRACT", "PERMANENT", "INTERN")
+		.default("CONTRACT")
+		.messages({
+		"any.only": "Work status must be CONTRACT, PERMANENT, or INTERN."
+    }),
+
+	password: Joi.string()
 		.min(8)
 		.pattern(/^(?=.*[A-Z])(?=.*[^a-zA-Z0-9]).{8,}$/)
-		.messages({
-			"string.empty": "Passw2ord is required.",
-			"string.min": "Password must be at least 8 characters long.",
-			"string.pattern.base":
-				"Password must be at least 8 characters long, contain at least 1 uppercase letter, and 1 special character.",
-		}),
-	password_confirmation: Joi.string()
 		.required()
+		.messages({
+			"string.empty": "Password is required.",
+			"string.min": "Password must be at least 8 characters long.",
+			"string.pattern.base": "Password must be at least 8 characters long, contain 1 uppercase letter, and 1 special character."
+    }),
+
+	password_confirmation: Joi.string()
 		.valid(Joi.ref("password"))
+		.required()
 		.messages({
 			"string.empty": "Password confirmation is required.",
-			"any.only": "Password confirmation does not match password.",
-		}),
+			"any.only": "Password confirmation does not match password."
+    })
 });
 
 const sendOtpSchema = Joi.object({

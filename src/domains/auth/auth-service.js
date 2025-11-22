@@ -14,7 +14,7 @@ class AuthService {
 		this.OTP_EXPIRES_IN = process.env.OTP_EXPIRES_IN || "5m";
 	}
 
-	async login(email, password) {
+	async loginAdmin(email, password) {
 		let user = await this.prisma.user.findFirst({
 			where: {
 				email: email,
@@ -33,17 +33,71 @@ class AuthService {
 
 		delete user.password;
 
-		const accessToken = generateToken({ id: user.id, type: "access" }, "1d");
-		const refreshToken = generateToken(
-			{ id: user.id, type: "refresh" },
-			"365d",
+		const accessTokenAdmin = generateToken(
+			{ id: user.id, role: user.role, type: "access" },
+			"1d",
+		);
+		const refreshTokenAdmin = generateToken(
+			{ id: user.id, role: user.role, type: "refresh" },
+			"1d",
 		);
 
-		return { access_token: accessToken, refresh_token: refreshToken, user };
+		return { access_token: accessTokenAdmin, refresh_token: refreshTokenAdmin, user };
 	}
 
-	async register(data) {
-		const emailExist = await this.prisma.user.findFirst({
+	async loginEmployee(email, password) {
+		let employee = await this.prisma.employee.findFirst({
+			where: {
+				email: email,
+			},
+		});
+
+		
+		if (!employee) {
+			throw BaseError.badRequest("Invalid credentials 1");
+		}
+
+		const isMatch = await matchPassword(password, employee.password);
+
+		if (!isMatch) {
+			throw BaseError.badRequest("Invalid credentials 2");
+		}
+
+		delete employee.password;
+
+		const accessTokenEmployee = generateToken(
+			{ id: employee.id, type: "access" },
+			"1d",
+		);
+		const refreshTokenEmployee = generateToken(
+			{ id: employee.id, type: "refresh" },
+			"1d",
+		);
+
+		return { access_token: accessTokenEmployee, refresh_token: refreshTokenEmployee };
+	}
+
+	async registerEmployee(data) {
+		const nipExist = await this.prisma.employee.findFirst({
+			where: {
+				nip: data.nip,
+			},
+		});
+
+		if (nipExist) {
+			let validation = "";
+			let stack = [];
+
+			validation +=  "Nip is already taken.";
+
+			stack.push({
+				message: "Nip is already taken.",
+				path: ["nip"],
+			});
+
+			throw new joi.ValidationError(validation, stack)
+		}
+		const emailExist = await this.prisma.employee.findFirst({
 			where: {
 				email: data.email,
 			},
@@ -52,7 +106,7 @@ class AuthService {
 		if (emailExist) {
 			let validation = "";
 			let stack = [];
-
+			
 			validation += "Email already taken.";
 
 			stack.push({
@@ -63,18 +117,26 @@ class AuthService {
 			throw new joi.ValidationError(validation, stack);
 		}
 
-		
-
 		await this.prisma.$transaction(async (tx) => {
 
-			const createduser = await tx.user.create({
+			const createdemployee = await tx.employee.create({
 				data: {
+					full_name: data.full_name,
+					nip: data.nip,
 					email: data.email,
 					password: await hashPassword(data.password),
+					position: data.position,
+					department: data.department,
+					phone_number: data.phone_number,
+					address: data.address, 
+					birth_date: new Date(data.birth_date),
+					join_date: new Date(data.join_date),
+					work_status: data.work_status,
+					verification: "WAIT"
 				},
 			});
 
-			if (!createduser) {
+			if (!createdemployee){
 				throw Error("Failed to register");
 			}
 		});
@@ -84,7 +146,43 @@ class AuthService {
 		};
 	}
 
-	async refreshToken(refreshToken) {
+	async refreshTokenEmployee(refreshToken){
+		if (!refreshToken) {
+			logger.error("Refresh token not provided");
+			throw BaseError.unauthorized("Refresh token not found");
+		}
+
+		const decoded = parseJWT(refreshToken);
+
+		if (!decoded || decoded.type !== "refresh") {
+			logger.error("Invalid refresh token");
+			throw BaseError.unauthorized("Invalid refresh token");
+		}
+
+		const employee = await this.prisma.employee.findFirst({
+			where: {
+				id: decoded.id,
+			},
+		});
+
+		if (!employee) {
+			logger.error("user not found for refresh token ID:", decoded.id);
+			throw BaseError.unauthorized("user not found");
+		}
+
+		const newAccessToken = generateToken(
+			{
+				id: employee.id,
+				from: "KC",
+				type: "access",
+			},
+			"1d",
+		);
+
+		return { access_token: newAccessToken };
+	}
+
+	async refreshTokenAdmin(refreshToken) {
 		if (!refreshToken) {
 			logger.error("Refresh token not provided");
 			throw BaseError.unauthorized("Refresh token not found");
