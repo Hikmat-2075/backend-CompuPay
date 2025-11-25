@@ -32,7 +32,7 @@ class AuthMiddleware {
 				return next(BaseError.unauthorized("Invalid Token"));
 			}
 
-			const user = await this.prisma.unit.findUnique({
+			const user = await this.prisma.user.findUnique({
 				where: {
 					id: decoded.id,
 				},

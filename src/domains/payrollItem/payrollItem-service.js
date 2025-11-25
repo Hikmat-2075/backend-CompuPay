@@ -1,7 +1,7 @@
-class EmployeeService {
+class PayrollitemService {
     async someMethod() {
         throw new Error("Method not implemented");
     }
 }
 
-export default new EmployeeService();
+export default new PayrollitemService();

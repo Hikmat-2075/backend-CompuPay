@@ -22,16 +22,10 @@ class AuthRoutes extends BaseRoutes {
 			tryCatch(AuthController.register),
 		]);
 
-		this.router.post("/login/admin", [
+		this.router.post("/login", [
 			validateCredentials(loginSchema),
-			tryCatch(AuthController.loginAdmin),
+			tryCatch(AuthController.login),
 		]);
-
-		this.router.post("/login/karyawan", [
-			validateCredentials(loginSchema),
-			tryCatch(AuthController.loginEmployee),
-		]);
-
 
 		this.router.post("/refresh", [tryCatch(AuthController.refreshToken)]);
 

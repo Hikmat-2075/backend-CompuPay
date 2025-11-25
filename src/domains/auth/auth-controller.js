@@ -4,27 +4,11 @@ import { successResponse } from "../../utils/response.js";
 import AuthService from "./auth-service.js";
 
 class AuthController {
-	async loginEmployee(req, res) {
+
+	async login(req, res) {
 		const { email, password } = req.body;
 
-		const data = await AuthService.loginEmployee(email, password);
-
-		// res
-		// 	.cookie("refresh_token", data.refresh_token,  {
-		// 		httpOnly: true,
-		// 		secure: process.env.NODE_ENV === "production",
-		// 		sameSite: "strict",
-		// 		maxAge: 7 * 24 * 60 * 60 * 1000,
-		// 	})
-		// 	.header("Authorization", `Bearer ${data.access_token}`);
-
-		return successResponse(res, data, "Login successful");
-	}
-
-	async loginAdmin(req, res) {
-		const { email, password } = req.body;
-
-		const data = await AuthService.loginAdmin(email, password);
+		const data = await AuthService.login(email, password);
 
 		res
 			.cookie("refresh_token", data.refresh_token, {
@@ -35,13 +19,13 @@ class AuthController {
 			})
 			.header("Authorization", `Bearer ${data.access_token}`);
 
-		return successResponse(res, data.unit, "Login successful");
+		return successResponse(res, data, "Login successful");
 	}
 
 	async register(req, res) {
 		let data = req.body;
 
-		const message = await AuthService.registerEmployee(data);
+		const message = await AuthService.register(data);
 
 		return successResponse(res, message);
 	}

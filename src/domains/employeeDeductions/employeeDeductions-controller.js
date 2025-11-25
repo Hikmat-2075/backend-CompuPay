@@ -1,4 +1,4 @@
-class EmployeeController {
+class EmployeedeductionsController {
 
     async index() {
         throw new Error("Method not implemented");
@@ -21,4 +21,4 @@ class EmployeeController {
     }
 }
 
-export default new EmployeeController();
+export default new EmployeedeductionsController();

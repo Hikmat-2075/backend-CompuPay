@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,59 +7,183 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Employee {
+  id                String        @id @default(uuid())
+  employee_number   String        @unique
+  name              String
+  email             String
+  profile_uri       String?
+  status            String
+  join_date         DateTime
+  departmentId      String
+  positionId        String
+  salary            Int
+
+  // Relasi -> Department
+  department    Department  @relation(fields: [departmentId], references: [id])
+
+  // Relasi -> Position
+  position      Position    @relation(fields: [positionId], references: [id])
+
+  // Relasi -> Employee Allowances
+  employeeAllowances EmployeeAllowances[]
+
+  // Relasi -> Employee Deductions
+  employeeDeductions EmployeeDeductions[]
+
+  // Relasi -> Attendance
+  attendance   Attendance[]
+
+  // Relasi -> Payroll Item
+  payrollItem  PayrollItem[]
+
+  @@map("Employee")
+}
+
+model Department {
+  id       String     @id @default(uuid())
+  name     String
+
+  employees Employee[]
+  positions Position[]
+
+  @@map("Department")
+}
+
+model Position {
+  id           String     @id @default(uuid())
+  name         String
+  departmentId String
+
+  department   Department @relation(fields: [departmentId], references: [id])
+  employees    Employee[]
+
+  @@map("Position")
+}
+
+//Tunjangan
+model Allowances {
+  id          String      @id @default(uuid())
+  allowance   String
+  description String?
+
+  employeeAllowances EmployeeAllowances[]
+
+  @@map("Allowances")
+}
+
+model EmployeeAllowances {
+  id            String      @id @default(uuid())
+  employeeId    String
+  allowanceId   String
+  type          String
+  amount        Int
+  effective_date DateTime
+  date_created  DateTime   @default(now())
+
+  employee   Employee   @relation(fields: [employeeId], references: [id])
+  allowance  Allowances @relation(fields: [allowanceId], references: [id])
+
+  @@map("Employee_Allowances")
+}
+
+//pemotongan gaji
+model Deductions {
+  id          String      @id @default(uuid())
+  deduction   String
+  description String?
+
+  employeeDeductions EmployeeDeductions[]
+
+  @@map("Deductions")
+}
+
+model EmployeeDeductions {
+  id             String      @id @default(uuid())
+  employeeId     String
+  deductionId    String
+  type           String
+  amount         Int
+  effective_date DateTime
+  date_created   DateTime @default(now())
+
+  employee  Employee   @relation(fields: [employeeId], references: [id])
+  deduction Deductions @relation(fields: [deductionId], references: [id])
+
+  @@map("Employee_Deductions")
+}
+
+enum LogType {
+  PRESENT
+  LATE
+  ABSENT
+  SICK
+  LEAVE
+  OVERTIME
+}
+
+// Kehadiran
+model Attendance {
+  id           String      @id @default(uuid())
+  employeeId   String
+  log_type     LogType
+  datetime_log DateTime
+  date_updated DateTime @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@map("Attendance")
+}
+
+model Payroll {
+  id           String      @id @default(uuid())
+  ref_no       String
+  date_from    DateTime
+  date_to      DateTime
+  type         String
+  status       String
+  date_created DateTime   @default(now())
+
+  items PayrollItem[]
+
+  @@map("Payroll")
+}
+
+model PayrollItem {
+  id               String      @id @default(uuid())
+  payrollId        String
+  employeeId       String
+  present          Int?
+  absent           Int?
+  late             Int?
+  salary           Float?
+  allowance_amount Float?
+  deductions       Float?
+  net              Float?
+  date_created     DateTime @default(now())
+
+  payroll  Payroll  @relation(fields: [payrollId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@map("Payroll_Item")
+}
+
 enum Role {
   SUPER_ADMIN
   ADMIN
-  KARYAWAN
 }
 
 model User {
-  id            String   @id @default(uuid())
-  email         String 
+  id            String     @id @default(uuid())
+  first_name    String
+  last_name     String
+  email         String     @unique
   password      String
   profile_uri   String?
-  role          Role @default(ADMIN)
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  role          Role       @default(ADMIN)
+  created_at    DateTime   @default(now())
+  updated_at    DateTime   @updatedAt
   deleted_at    DateTime?
 
   @@map("users")
 }
-
-enum WorkStatus {
-  CONTRACT
-  PERMANENT
-  INTERN
-}
-
-enum VerificationStatus {
-  ACCEPTED
-  DECLINE
-  WAIT
-}
-
-model Employee {
-  id             String     @id @default(uuid())
-  full_name      String
-  nip            String     @unique
-  email          String     @unique
-  password       String
-  position       String     
-  department     String     
-  phone_number   String
-  address        String
-  birth_date     DateTime
-  join_date      DateTime
-  work_status    WorkStatus
-  base_salary    Int?
-  verification   VerificationStatus @default(WAIT)
-
-  created_at     DateTime   @default(now())
-  updated_at     DateTime   @updatedAt
-  deleted_at     DateTime?
-
-  @@map("employee")
-}
-
-
-
