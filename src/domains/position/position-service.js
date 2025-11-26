@@ -48,7 +48,8 @@ class PositionService {
 
     async detail(id) {
         const position = await this.prisma.position.findUnique({
-            where: { id }
+            where: { id },
+            include: positionQueryConfig.relations,
         });
         if (!position) {
             throw BaseError.notFound("Position not found");

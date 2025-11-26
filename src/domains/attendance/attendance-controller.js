@@ -1,23 +1,42 @@
+import { createdResponse, successResponse } from "../../utils/response";
+import attendanceService from "./attendance-service.js";
+
 class AttendanceController {
 
-    async index() {
-        throw new Error("Method not implemented");
+    async create(req, res) {
+        const result = await attendanceService.create(req.body);
+        return createdResponse(res, result);
     }
 
-    async show() {
-        throw new Error("Method not implemented");
+    async list(req, res) {
+        const query = req.query;
+        const result = await attendanceService.list({ query });
+
+        return successResponse(
+            res,
+            result.data,
+            "Attendance retrived successfully",
+            result.meta
+        );
     }
 
-    async create() {
-        throw new Error("Method not implemented");
+    async detail(req, res) {
+        const result = await attendanceService.detail(req.params.id);
+    return successResponse(res, result);
     }
 
     async update() {
-        throw new Error("Method not implemented");
+        const result = await attendanceService.update(
+            req.attendances,
+            req.params.id,
+            req.body
+        );
+        return successResponse(res, result);
     }
 
-    async delete() {
-        throw new Error("Method not implemented");
+    async remove(req, res) {
+        const result = await attendanceService.remove(req.params.id);
+        return successResponse(res, result);
     }
 }
 

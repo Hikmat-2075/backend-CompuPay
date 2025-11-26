@@ -17,7 +17,7 @@ class DepartmentRoutes extends BaseRoutes {
         ]);
         this.router.get("/:id", [
             authTokenMiddleware.authenticate,
-            tryCatch(DepartmentController.detial),
+            tryCatch(DepartmentController.detail),
         ]);
         this.router.post("/", [
             validateCredentials(departmentCreateSchema),

@@ -20,22 +20,22 @@ class DepartmentController {
         );
     }
 
-    async detial(req, res) {
-        const result = await departmentService.detail(req.paramas.id);
+    async detail(req, res) {
+        const result = await departmentService.detail(req.params.id);
     return successResponse(res, result);
     }
 
     async update() {
         const result = await departmentService.update(
             req.department,
-            req.paramas.id,
+            req.params.id,
             req.body
         );
         return successResponse(res, result);
     }
 
     async remove(req, res) {
-        const result = await departmentService.remove(req.paramas.id);
+        const result = await departmentService.remove(req.params.id);
         return successResponse(res, result);
     }
 }

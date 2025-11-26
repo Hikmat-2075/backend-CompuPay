@@ -17,7 +17,7 @@ class PositionRoutes extends BaseRoutes {
         ]);
         this.router.get("/:id", [
             authTokenMiddleware.authenticate,
-            tryCatch(PositionController.detial),
+            tryCatch(PositionController.detail),
         ]);
         this.router.post("/", [
             validateCredentials(positionCreateSchema),

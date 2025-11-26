@@ -7,35 +7,31 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Status {
+  ACTIVE
+  INACTIVE
+}
+
 model Employee {
   id                String        @id @default(uuid())
   employee_number   String        @unique
   name              String
-  email             String
+  email             String        @unique
   profile_uri       String?
-  status            String
+  status            Status        @default(ACTIVE)
   join_date         DateTime
   departmentId      String
   positionId        String
   salary            Int
 
-  // Relasi -> Department
-  department    Department  @relation(fields: [departmentId], references: [id])
 
-  // Relasi -> Position
+  department    Department  @relation(fields: [departmentId], references: [id])
   position      Position    @relation(fields: [positionId], references: [id])
 
-  // Relasi -> Employee Allowances
-  employeeAllowances EmployeeAllowances[]
-
-  // Relasi -> Employee Deductions
-  employeeDeductions EmployeeDeductions[]
-
-  // Relasi -> Attendance
-  attendance   Attendance[]
-
-  // Relasi -> Payroll Item
-  payrollItem  PayrollItem[]
+  employeeAllowances  EmployeeAllowances[]
+  employeeDeductions  EmployeeDeductions[]
+  attendance          Attendance[]
+  payrollItem         PayrollItem[]
 
   @@map("Employee")
 }
@@ -43,6 +39,9 @@ model Employee {
 model Department {
   id       String     @id @default(uuid())
   name     String
+  start_salary  Int
+  end_salary    Int
+  descrption    String?
 
   employees Employee[]
   positions Position[]

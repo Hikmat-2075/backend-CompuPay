@@ -39,7 +39,8 @@ class DepartmentService {
 
     async detail(id) {
         const department = await this.prisma.department.findUnique({
-            where: { id }
+            where: { id },
+            include: departmentQueryConfig.relations,
         });
         if (!department) {
             throw BaseError.notFound("Department not found");

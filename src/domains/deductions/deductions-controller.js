@@ -1,23 +1,40 @@
+import { createdResponse, successResponse } from "../../utils/response";
+import deductionsService from "./deductions-service.js"
 class DeductionsController {
-
-    async index() {
-        throw new Error("Method not implemented");
+    async create(req, res) {
+        const result = await deductionsService.create(req.body);
+        return createdResponse(res, result);
     }
 
-    async show() {
-        throw new Error("Method not implemented");
+    async list(req, res) {
+        const query = req.query;
+        const result = await deductionsService.list({ query });
+
+        return successResponse(
+            res,
+            result.data,
+            "Deductions retrived successfully",
+            result.meta
+        );
     }
 
-    async create() {
-        throw new Error("Method not implemented");
+    async detail(req, res) {
+        const result = await deductionsService.detail(req.params.id);
+    return successResponse(res, result);
     }
 
     async update() {
-        throw new Error("Method not implemented");
+        const result = await deductionsService.update(
+            req.deductions,
+            req.params.id,
+            req.body
+        );
+        return successResponse(res, result);
     }
 
-    async delete() {
-        throw new Error("Method not implemented");
+    async remove(req, res) {
+        const result = await deductionsService.remove(req.params.id);
+        return successResponse(res, result);
     }
 }
 

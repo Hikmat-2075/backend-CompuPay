@@ -21,22 +21,22 @@ class PositionController {
             );
         }
     
-        async detial(req, res) {
-            const result = await positionService.detail(req.paramas.id);
+        async detail(req, res) {
+            const result = await positionService.detail(req.params.id);
         return successResponse(res, result);
         }
     
         async update() {
             const result = await positionService.update(
                 req.position,
-                req.paramas.id,
+                req.params.id,
                 req.body
             );
             return successResponse(res, result);
         }
     
         async remove(req, res) {
-            const result = await positionService.remove(req.paramas.id);
+            const result = await positionService.remove(req.params.id);
             return successResponse(res, result);
         }
 }

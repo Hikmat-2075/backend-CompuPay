@@ -13,46 +13,57 @@ class AttendanceService {
         const stack = [];
         const fail = (msg, path) => {
             validation += (validation ? " " : "") + msg;
-            stack.push({message: msg, path: [path]});
+            stack.push({ message: msg, path: [path] });
         };
+
         return this.prisma.$transaction(async (tx) => {
+
+            // Check existing attendance for same employee & same date
             const attendanceExist = await tx.attendance.findFirst({
-                where: {deduction: data.deduction}
+                where: {
+                    employeeId: data.employeeId,
+                    datetime_log: {
+                        gte: new Date(new Date(data.datetime_log).setHours(0,0,0,0)),
+                        lt: new Date(new Date(data.datetime_log).setHours(23,59,59,999))
+                    }
+                }
             });
 
-            if(deductionExist) {
-                fail("Deduction already exist", "deduction");
+            if (attendanceExist) {
+                fail("Attendance for this employee already exists today", "employeeId");
                 throw new Joi.validation(validation, stack);
             }
 
+            // Create
             const created = await tx.attendance.create({
                 data
             });
 
-            if(!created) {
-                throw new Error("Failed to create Attendance")
+            if (!created) {
+                throw new Error("Failed to create Attendance");
             }
 
             return created;
         });
     }
 
+
     async detail(id) {
-        const deduction = await this.prisma.deductions.findUnique({
+        const attendace = await this.prisma.attendance.findUnique({
             where: { id }
         });
-        if (!deduction) {
-            throw BaseError.notFound("Deduction not found");
+        if (!attendace) {
+            throw BaseError.notFound("Attendance not found");
         }
-        return deduction;
+        return attendace;
     }
 
     async list({query} = {}) {
-        const options = buildQueryOptions(deductionsQueryConfig, query);
+        const options = buildQueryOptions(attendanceQueryConfig, query);
 
         const [data, count] = await Promise.all([
-            this.prisma.deductions.findMany(options),
-            this.prisma.deductions.count({ where: options.where }),
+            this.prisma.attendance.findMany(options),
+            this.prisma.attendance.count({ where: options.where }),
         ]);
 
         const page = query?.pagination?.page ?? 1;
@@ -75,43 +86,63 @@ class AttendanceService {
 
     async update(currentUser, id, data) {
         return this.prisma.$transaction(async (tx) => {
-            const current = await tx.deductions.findUnique({ where: {id}});
+            const current = await tx.attendance.findUnique({ where: { id } });
             if (!current) {
-                throw BaseError.notFound("Deduction not found");
+                throw BaseError.notFound("Attendance not found");
             }
+
             let validation = "";
             const stack = [];
             const fail = (message, path) => {
-            validation += (validation ? " " : "") + message;
+                validation += (validation ? " " : "") + message;
                 stack.push({ message, path: [path] });
             };
-            
-            if (data.deduction) {
-                const deductionExist = await tx.deductions.findFirst({
+
+            // Jika user ingin ubah employeeId atau datetime
+            if (data.employeeId || data.datetime_log) {
+
+                const newEmployeeId = data.employeeId ?? current.employeeId;
+                const newLogDate = data.datetime_log ?? current.datetime_log;
+
+                const startDay = new Date(newLogDate);
+                startDay.setHours(0, 0, 0, 0);
+
+                const endDay = new Date(newLogDate);
+                endDay.setHours(23, 59, 59, 999);
+
+                // Check duplicate attendance
+                const attendanceExist = await tx.attendance.findFirst({
                     where: {
-                        deduction: data.deduction,
+                        employeeId: newEmployeeId,
+                        datetime_log: {
+                            gte: startDay,
+                            lt: endDay
+                        },
                         NOT: { id }
                     }
                 });
-            
-                if (deductionExist) {
-                    fail("Deduction already exists", "deduction");
+
+                if (attendanceExist) {
+                    fail("Attendance for this employee already exists today", "employeeId");
                     throw new Joi.ValidationError(validation, stack);
                 }
             }
 
-            const updated = await tx.deductions.update({
+            // Update attendance
+            const updated = await tx.attendance.update({
                 where: { id },
                 data,
             });
+
             return updated;
-        })
+        });
     }
 
-    async remove(id) {
-        const deleted = await this.prisma.deductions.delete({ where: { id } });
 
-        return {message: "Deduction deleted successfully", data: deleted};
+    async remove(id) {
+        const deleted = await this.prisma.attendance.delete({ where: { id } });
+
+        return {message: "Attendance deleted successfully", data: deleted};
     }
 }
 
