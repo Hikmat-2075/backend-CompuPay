@@ -3,14 +3,37 @@ import PayrollController from "./payroll-controller.js";
 
 import tryCatch from "../../utils/tryCatcher.js";
 import validateCredentials from '../../middlewares/validate-credentials-middleware.js';
+import authTokenMiddleware from "../../middlewares/auth-token-middleware.js";
+import { payrollCreateSchema, payrollUpdateSchema } from "./payroll-schema.js";
 
 class PayrollRoutes extends BaseRoutes {
     routes() {
-        this.router.get("/", [tryCatch(PayrollController.index)]);
-        this.router.get("/:id", [tryCatch(PayrollController.show)]);
-        this.router.post("/", [tryCatch(PayrollController.create)]);
-        this.router.put("/:id", [tryCatch(PayrollController.update)]);
-        this.router.delete("/:id", [tryCatch(PayrollController.delete)]);
+        this.router.get("/", [
+            authTokenMiddleware.authenticate,
+            tryCatch(PayrollController.list)
+        ]);
+
+        this.router.get("/:id", [
+            authTokenMiddleware.authenticate,
+            tryCatch(PayrollController.detail)
+        ]);
+
+        this.router.post("/", [
+            validateCredentials(payrollCreateSchema),
+            authTokenMiddleware.authenticate,
+            tryCatch(PayrollController.create)
+        ]);
+
+        this.router.put("/:id", [
+            validateCredentials(payrollUpdateSchema),
+            authTokenMiddleware.authenticate,
+            tryCatch(PayrollController.update) 
+        ]);
+
+        this.router.delete("/:id", [
+            authTokenMiddleware.authenticate,
+            tryCatch(PayrollController.delete)
+        ]);
     }
 }
 

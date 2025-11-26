@@ -1,23 +1,39 @@
 class PayrollController {
 
-    async index() {
-        throw new Error("Method not implemented");
-    }
-
-    async show() {
-        throw new Error("Method not implemented");
-    }
-
     async create() {
-        throw new Error("Method not implemented");
+        const result = await payrollService.create(req.body);
+        return createdResponse(res, result);
     }
+    
+    async list() {
+        const query = req.query;
+        const result = await payrollService.list({ query });
 
+        return successResponse(
+            res,
+            result.data,
+            "Payroll retrived successfully",
+            result.meta
+        );
+    }
+    
+    async detail() {
+        const result = await payrollService.detail(req.params.id);
+        return successResponse(res, result);
+    }
+    
     async update() {
-        throw new Error("Method not implemented");
+        const result = await payrollService.update(
+            req.payroll,
+            req.params.id,
+            req.body
+        );
+        return successResponse(res, result);
     }
 
     async delete() {
-        throw new Error("Method not implemented");
+        const result = await payrollService.remove(req.params.id);
+        return successResponse(res, result);
     }
 }
 
