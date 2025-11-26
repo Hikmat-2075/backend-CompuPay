@@ -2,8 +2,7 @@ import BaseRoutes from "../../base_classes/base-routes.js";
 import DeductionsController from "./deductions-controller.js";
 import {
     deductionsCreateSchema,
-    departmentCreateSchema,
-    departmentUpdateSchema,
+    deductionsUpdateSchema,
 } from "./deductions-schema.js";
 import tryCatch from "../../utils/tryCatcher.js";
 import validateCredentials from '../../middlewares/validate-credentials-middleware.js';
@@ -25,7 +24,7 @@ class DeductionsRoutes extends BaseRoutes {
             tryCatch(DeductionsController.create),
         ]);
         this.router.put("/", [
-            validateCredentials(departmentUpdateSchema),
+            validateCredentials(deductionsUpdateSchema),
             authTokenMiddleware.authenticate,
             tryCatch(DeductionsController.update),
         ]);
