@@ -1,4 +1,4 @@
-import { createdResponse, successResponse } from "../../utils/response";
+import { createdResponse, successResponse } from "../../utils/response.js";
 import deductionsService from "./deductions-service.js"
 class DeductionsController {
     async create(req, res) {
