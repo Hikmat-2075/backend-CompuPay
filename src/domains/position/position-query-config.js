@@ -6,15 +6,21 @@ const positionQueryConfig = {
     orderableFields: [
         "id",
         "name",
-        "departmentId"
+        "departmentId",
+        "created_at",
+        "updated_at"
     ],
 
     relations: {
         department: true,
-        employees: true
+        employees: true,
+        levels: true
     },
 
-    dateFields: {}, // Model Position tidak memiliki field tanggal
+    dateFields: {
+        created_at: true,
+        updated_at: true
+    }
 };
 
 export default positionQueryConfig;

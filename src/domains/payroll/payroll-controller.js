@@ -1,11 +1,14 @@
+import { createdResponse, successResponse } from "../../utils/response.js";
+import payrollService from "./payroll-service.js";
+
 class PayrollController {
 
-    async create() {
+    async create(req, res) {
         const result = await payrollService.create(req.body);
         return createdResponse(res, result);
     }
     
-    async list() {
+    async list(req, res) {
         const query = req.query;
         const result = await payrollService.list({ query });
 
@@ -17,12 +20,12 @@ class PayrollController {
         );
     }
     
-    async detail() {
+    async detail(req, res) {
         const result = await payrollService.detail(req.params.id);
         return successResponse(res, result);
     }
     
-    async update() {
+    async update(req, res) {
         const result = await payrollService.update(
             req.payroll,
             req.params.id,
@@ -31,7 +34,7 @@ class PayrollController {
         return successResponse(res, result);
     }
 
-    async delete() {
+    async remove(req, res) {
         const result = await payrollService.remove(req.params.id);
         return successResponse(res, result);
     }

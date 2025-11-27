@@ -31,7 +31,7 @@ class DepartmentRoutes extends BaseRoutes {
         ]);
         this.router.delete("/:id", [
             authTokenMiddleware.authenticate,
-            tryCatch(DepartmentController.delete),
+            tryCatch(DepartmentController.remove),
         ]);
     }
 }

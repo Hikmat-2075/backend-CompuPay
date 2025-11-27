@@ -32,7 +32,7 @@ class PayrollRoutes extends BaseRoutes {
 
         this.router.delete("/:id", [
             authTokenMiddleware.authenticate,
-            tryCatch(PayrollController.delete)
+            tryCatch(PayrollController.remove)
         ]);
     }
 }

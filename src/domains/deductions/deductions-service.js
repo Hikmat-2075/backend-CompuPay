@@ -8,7 +8,7 @@ class DeductionsService {
     constructor(){
         this.prisma = new PrismaService
     }
-    async create(currentUser, data) {
+    async create(data) {
         let validation = "";
         const stack = [];
         const fail = (msg, path) => {
@@ -39,7 +39,8 @@ class DeductionsService {
 
     async detail(id) {
         const deduction = await this.prisma.deductions.findUnique({
-            where: { id }
+            where: { id },
+            include: deductionsQueryConfig.relations,
         });
         if (!deduction) {
             throw BaseError.notFound("Deduction not found");
@@ -109,10 +110,24 @@ class DeductionsService {
     }
 
     async remove(id) {
-        const deleted = await this.prisma.deductions.delete({ where: { id } });
+        const current = await this.prisma.deductions.findUnique({
+            where: { id }
+        });
 
-        return {message: "Deduction deleted successfully", data: deleted};
+        if (!current) {
+            throw BaseError.notFound("Deduction not found");
+        }
+
+        const deleted = await this.prisma.deductions.delete({
+            where: { id }
+        });
+
+        return {
+            message: "Deduction deleted successfully"
+            // optional: data: deleted
+        };
     }
+
 }
 
 export default new DeductionsService();

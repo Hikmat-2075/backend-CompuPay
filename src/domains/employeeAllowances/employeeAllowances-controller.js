@@ -1,24 +1,42 @@
-class EmployeeallowancesController {
+import { createdResponse, successResponse } from "../../utils/response.js";
+import employeeAllowancesService from "./employeeAllowances-service.js";
 
-    async index() {
-        throw new Error("Method not implemented");
+class EmployeeAllowancesController {
+
+    async create(req, res) {
+        const result = await employeeAllowancesService.create(req.body);
+        return createdResponse(res, result);
     }
 
-    async show() {
-        throw new Error("Method not implemented");
+    async list(req, res) {
+        const query = req.query;
+        const result = await employeeAllowancesService.list({ query });
+
+        return successResponse(
+            res,
+            result.data,
+            "Employee Allowances retrieved successfully",
+            result.meta
+        );
     }
 
-    async create() {
-        throw new Error("Method not implemented");
+    async detail(req, res) {
+        const result = await employeeAllowancesService.detail(req.params.id);
+        return successResponse(res, result);
     }
 
-    async update() {
-        throw new Error("Method not implemented");
+    async update(req, res) {
+        const result = await employeeAllowancesService.update(
+            req.params.id,
+            req.body
+        );
+        return successResponse(res, result);
     }
 
-    async delete() {
-        throw new Error("Method not implemented");
+    async remove(req, res) {
+        const result = await employeeAllowancesService.remove(req.params.id);
+        return successResponse(res, result);
     }
 }
 
-export default new EmployeeallowancesController();
+export default new EmployeeAllowancesController();

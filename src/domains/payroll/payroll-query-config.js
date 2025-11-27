@@ -13,7 +13,7 @@ const payrollQueryConfig = {
     ],
 
     relations: {
-        payrollItem: true
+        items: true
     },
 
     dateFields: {

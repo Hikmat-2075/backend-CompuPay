@@ -32,7 +32,7 @@ class AllowancesRoutes extends BaseRoutes {
         ]);
         this.router.delete("/:id", [
             authTokenMiddleware.authenticate,
-            tryCatch(AllowancesController.delete)
+            tryCatch(AllowancesController.remove)
         ]);
     }
 }
