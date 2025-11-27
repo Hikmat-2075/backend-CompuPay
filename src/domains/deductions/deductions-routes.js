@@ -23,14 +23,14 @@ class DeductionsRoutes extends BaseRoutes {
             authTokenMiddleware.authenticate,
             tryCatch(DeductionsController.create),
         ]);
-        this.router.put("/", [
+        this.router.put("/:id", [
             validateCredentials(deductionsUpdateSchema),
             authTokenMiddleware.authenticate,
             tryCatch(DeductionsController.update),
         ]);
-        this.router.delete("/", [
+        this.router.delete("/:id", [
             authTokenMiddleware.authenticate,
-            tryCatch(DeductionsController.delete),
+            tryCatch(DeductionsController.remove),
         ]);
     }
 }

@@ -1,4 +1,4 @@
-import { createdResponse, successResponse } from "../../utils/response";
+import { createdResponse, successResponse } from "../../utils/response.js";
 import allowancesService from "./allowances-service.js";
 
 class AllowancesController {

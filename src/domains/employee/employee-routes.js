@@ -31,7 +31,7 @@ class EmployeeRoutes extends BaseRoutes {
         ]);
         this.router.delete("/:id", [
             authTokenMiddleware.authenticate,
-            tryCatch(EmployeeController.delete)
+            tryCatch(EmployeeController.remove)
         ]);
     }
 }

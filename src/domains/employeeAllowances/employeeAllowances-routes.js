@@ -3,14 +3,36 @@ import EmployeeallowancesController from "./employeeAllowances-controller.js";
 
 import tryCatch from "../../utils/tryCatcher.js";
 import validateCredentials from '../../middlewares/validate-credentials-middleware.js';
+import authTokenMiddleware from "../../middlewares/auth-token-middleware.js"
+import {
+    employeeAllowancesCreateSchema,
+    employeeAllowancesUpdateSchema,
+} from "./employeeAllowances-schema.js"
 
 class EmployeeallowancesRoutes extends BaseRoutes {
     routes() {
-        this.router.get("/", [tryCatch(EmployeeallowancesController.index)]);
-        this.router.get("/:id", [tryCatch(EmployeeallowancesController.show)]);
-        this.router.post("/", [tryCatch(EmployeeallowancesController.create)]);
-        this.router.put("/:id", [tryCatch(EmployeeallowancesController.update)]);
-        this.router.delete("/:id", [tryCatch(EmployeeallowancesController.delete)]);
+        this.router.get("/", [
+            authTokenMiddleware.authenticate,
+            tryCatch(EmployeeallowancesController.list)
+        ]);
+        this.router.get("/:id", [
+            authTokenMiddleware.authenticate,
+            tryCatch(EmployeeallowancesController.detail)
+        ]);
+        this.router.post("/", [
+            validateCredentials(employeeAllowancesCreateSchema),
+            authTokenMiddleware.authenticate,
+            tryCatch(EmployeeallowancesController.create)
+        ]);
+        this.router.put("/:id", [
+            validateCredentials(employeeAllowancesUpdateSchema),
+            authTokenMiddleware.authenticate,
+            tryCatch(EmployeeallowancesController.update)
+        ]);
+        this.router.delete("/:id", [
+            authTokenMiddleware.authenticate,
+            tryCatch(EmployeeallowancesController.delete)
+        ]);
     }
 }
 

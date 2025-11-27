@@ -25,7 +25,7 @@ class DepartmentController {
     return successResponse(res, result);
     }
 
-    async update() {
+    async update(req, res) {
         const result = await departmentService.update(
             req.department,
             req.params.id,

@@ -23,7 +23,7 @@ class DeductionsController {
     return successResponse(res, result);
     }
 
-    async update() {
+    async update(req, res) {
         const result = await deductionsService.update(
             req.deductions,
             req.params.id,

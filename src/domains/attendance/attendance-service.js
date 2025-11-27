@@ -34,6 +34,17 @@ class AttendanceService {
                 throw new Joi.validation(validation, stack);
             }
 
+            const employee = await tx.attendance.findUnique({
+                where : {
+                    employeeId: data.employeeId,
+                }
+            })
+
+            if (!employee) {
+                fail("Employee not found", "employeeId");
+                throw new Joi.ValidationError(validation, stack);
+            }
+
             // Create
             const created = await tx.attendance.create({
                 data
@@ -50,7 +61,8 @@ class AttendanceService {
 
     async detail(id) {
         const attendace = await this.prisma.attendance.findUnique({
-            where: { id }
+            where: { id },
+            include: attendanceQueryConfig.relations,
         });
         if (!attendace) {
             throw BaseError.notFound("Attendance not found");

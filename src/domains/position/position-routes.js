@@ -31,7 +31,7 @@ class PositionRoutes extends BaseRoutes {
         ]);
         this.router.delete("/:id", [
             authTokenMiddleware.authenticate,
-            tryCatch(PositionController.delete),
+            tryCatch(PositionController.remove),
         ]);
     }
 }

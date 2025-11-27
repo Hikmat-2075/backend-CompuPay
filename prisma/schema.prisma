@@ -12,59 +12,106 @@ enum Status {
   INACTIVE
 }
 
+enum LogType {
+  PRESENT
+  LATE
+  ABSENT
+  SICK
+  LEAVE
+  OVERTIME
+}
+
+enum TypePayroll {
+  MONTHLY
+  BONUS
+  ADHOC
+}
+
+enum StatusPayroll {
+  DRAFT
+  POSTED
+  PAID
+  CANCELLED
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+}
+
 model Employee {
-  id                String        @id @default(uuid())
-  employee_number   String        @unique
-  name              String
-  email             String        @unique
-  profile_uri       String?
-  status            Status        @default(ACTIVE)
-  join_date         DateTime
-  departmentId      String
-  positionId        String
-  salary            Int
+  id               String               @id @default(uuid())
+  employee_number  String               @unique
+  name             String
+  email            String               @unique
+  profile_uri      String?
+  status           Status               @default(ACTIVE)
+  join_date        DateTime
+  departmentId     String
+  positionId       String
+  salary           Int
+  created_at       DateTime             @default(now())
+  updated_at       DateTime             @updatedAt
 
-
-  department    Department  @relation(fields: [departmentId], references: [id])
-  position      Position    @relation(fields: [positionId], references: [id])
+  department       Department           @relation(fields: [departmentId], references: [id])
+  position         Position             @relation(fields: [positionId], references: [id])
 
   employeeAllowances  EmployeeAllowances[]
   employeeDeductions  EmployeeDeductions[]
   attendance          Attendance[]
-  payrollItem         PayrollItem[]
+  payrollItems        PayrollItem[]
 
   @@map("Employee")
 }
 
 model Department {
-  id       String     @id @default(uuid())
-  name     String
-  start_salary  Int
-  end_salary    Int
-  descrption    String?
+  id          String     @id @default(uuid())
+  name        String
+  start_salary Int
+  end_salary   Int
+  description  String?
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
 
-  employees Employee[]
-  positions Position[]
+  employees  Employee[]
+  positions  Position[]
 
   @@map("Department")
 }
 
 model Position {
   id           String     @id @default(uuid())
-  name         String
+  name         String      
   departmentId String
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
 
   department   Department @relation(fields: [departmentId], references: [id])
   employees    Employee[]
+  levels      PositionLevel[]
 
   @@map("Position")
 }
+
+model PositionLevel {
+  id            String    @id @default(uuid())
+  positionId    String
+  name          String
+
+  position    Position    @relation(fields: [positionId], references: [id])
+
+  @@map("Position_level")
+}
+
+
 
 //Tunjangan
 model Allowances {
   id          String      @id @default(uuid())
   allowance   String
   description String?
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
 
   employeeAllowances EmployeeAllowances[]
 
@@ -72,13 +119,14 @@ model Allowances {
 }
 
 model EmployeeAllowances {
-  id            String      @id @default(uuid())
-  employeeId    String
-  allowanceId   String
-  type          String
-  amount        Int
+  id             String    @id @default(uuid())
+  employeeId     String
+  allowanceId    String
+  type           String
+  amount         Int
   effective_date DateTime
-  date_created  DateTime   @default(now())
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
 
   employee   Employee   @relation(fields: [employeeId], references: [id])
   allowance  Allowances @relation(fields: [allowanceId], references: [id])
@@ -91,6 +139,8 @@ model Deductions {
   id          String      @id @default(uuid())
   deduction   String
   description String?
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
 
   employeeDeductions EmployeeDeductions[]
 
@@ -98,13 +148,14 @@ model Deductions {
 }
 
 model EmployeeDeductions {
-  id             String      @id @default(uuid())
+  id             String    @id @default(uuid())
   employeeId     String
   deductionId    String
   type           String
   amount         Int
   effective_date DateTime
-  date_created   DateTime @default(now())
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
 
   employee  Employee   @relation(fields: [employeeId], references: [id])
   deduction Deductions @relation(fields: [deductionId], references: [id])
@@ -112,36 +163,28 @@ model EmployeeDeductions {
   @@map("Employee_Deductions")
 }
 
-enum LogType {
-  PRESENT
-  LATE
-  ABSENT
-  SICK
-  LEAVE
-  OVERTIME
-}
-
 // Kehadiran
 model Attendance {
-  id           String      @id @default(uuid())
+  id           String   @id @default(uuid())
   employeeId   String
   log_type     LogType
   datetime_log DateTime
-  date_updated DateTime @updatedAt
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
 
   employee Employee @relation(fields: [employeeId], references: [id])
 
   @@map("Attendance")
 }
-
 model Payroll {
-  id           String      @id @default(uuid())
+  id           String        @id @default(uuid())
   ref_no       String
   date_from    DateTime
   date_to      DateTime
-  type         String
-  status       String
-  date_created DateTime   @default(now())
+  type         TypePayroll
+  status       StatusPayroll
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @updatedAt
 
   items PayrollItem[]
 
@@ -149,27 +192,23 @@ model Payroll {
 }
 
 model PayrollItem {
-  id               String      @id @default(uuid())
+  id               String   @id @default(uuid())
   payrollId        String
   employeeId       String
   present          Int?
   absent           Int?
   late             Int?
-  salary           Float?
-  allowance_amount Float?
-  deductions       Float?
-  net              Float?
-  date_created     DateTime @default(now())
+  salary           Decimal?    // gunakan Decimal untuk akurasi keuangan
+  allowance_amount Decimal?
+  deductions       Decimal?
+  net              Decimal?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
 
   payroll  Payroll  @relation(fields: [payrollId], references: [id])
   employee Employee @relation(fields: [employeeId], references: [id])
 
   @@map("Payroll_Item")
-}
-
-enum Role {
-  SUPER_ADMIN
-  ADMIN
 }
 
 model User {

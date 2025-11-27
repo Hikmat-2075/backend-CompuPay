@@ -25,9 +25,8 @@ class EmployeeController {
     return successResponse(res, result);
     }
 
-    async update() {
+    async update(req ,res) {
         const result = await employeeService.update(
-            req.employee,
             req.params.id,
             req.body
         );

@@ -18,7 +18,7 @@ class AllowancesService {
         };
         return this.prisma.$transaction(async (tx) => {
             const allowancesExist = await tx.allowances.findFirst({
-                where: {name: data.name}
+                where: {allowance: data.allowance}
             });
 
             if(allowancesExist) {
@@ -40,7 +40,8 @@ class AllowancesService {
 
     async detail(id) {
         const allowances = await this.prisma.allowances.findUnique({
-            where: { id }
+            where: { id },
+            include: allowancesQueryConfig.relations,
         });
         if (!allowances) {
             throw BaseError.notFound("Allowances not found");
@@ -110,9 +111,22 @@ class AllowancesService {
     }
 
     async remove(id) {
-        const deleted = await this.prisma.allowances.delete({ where: { id } });
+        const current = await this.prisma.allowances.findUnique({
+            where: { id }
+        });
 
-        return {message: "Allowance deleted successfully", data: deleted};
+        if (!current) {
+            throw BaseError.notFound("Allowances not found");
+        }
+
+        const deleted = await this.prisma.allowances.delete({
+            where: { id }
+        });
+
+        return {
+            message: "Allowances deleted successfully"
+            // optional: data: deleted
+        };
     }
 }
 

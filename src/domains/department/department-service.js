@@ -8,30 +8,27 @@ class DepartmentService {
     constructor(){
         this.prisma = new PrismaService
     }
-    async create(currentUser, data) {
+    async create(data) {
+        if (!data) throw BaseError.badRequest("Request body is required");
+
         let validation = "";
         const stack = [];
         const fail = (msg, path) => {
             validation += (validation ? " " : "") + msg;
-            stack.push({message: msg, path: [path]});
+            stack.push({ message: msg, path: [path] });
         };
+
         return this.prisma.$transaction(async (tx) => {
             const departmentExist = await tx.department.findFirst({
-                where: {name: data.name}
+                where: { name: data.name }
             });
 
-            if(departmentExist) {
+            if (departmentExist) {
                 fail("Department already exist", "name");
-                throw new Joi.validation(validation, stack);
+                throw BaseError.badRequest(validation, stack);
             }
 
-            const created = await tx.department.create({
-                data
-            });
-
-            if(!created) {
-                throw new Error("Failed to create Department")
-            }
+            const created = await tx.department.create({ data });
 
             return created;
         });
@@ -50,6 +47,8 @@ class DepartmentService {
 
     async list({query} = {}) {
         const options = buildQueryOptions(departmentQueryConfig, query);
+
+        options.include = departmentQueryConfig.relations;
 
         const [data, count] = await Promise.all([
             this.prisma.department.findMany(options),
@@ -109,11 +108,49 @@ class DepartmentService {
         })
     }
 
-    async remove(id) {
-        const deleted = await this.prisma.department.delete({ where: { id } });
+async remove(id) {
+    return this.prisma.$transaction(async (tx) => {
+        const current = await this.prisma.department.findUnique({
+            where: { id }
+        });
 
-        return {message: "Department deleted successfully", data: deleted};
-    }
+        if (!current) {
+            throw BaseError.notFound("Department not found");
+        }
+        // cek apakah department dipakai employee
+        const employeeCount = await tx.employee.count({
+            where: { departmentId: id }
+        });
+
+        if (employeeCount > 0) {
+            throw BaseError.badRequest(
+                "Cannot delete department because it is still assigned to employees"
+            );
+        }
+
+        // cek apakah department dipakai position
+        const positionCount = await tx.position.count({
+            where: { departmentId: id }
+        });
+
+        if (positionCount > 0) {
+            throw BaseError.badRequest(
+                "Cannot delete department because it is still used in positions"
+            );
+        }
+
+        //jika aman → hapus
+        const deleted = await tx.department.delete({
+            where: { id }
+        });
+
+        return {
+            message: "Department deleted successfully",
+            // data: deleted
+        };
+    });
+}
+
 }
 
 export default new DepartmentService();

@@ -4,7 +4,8 @@ import { PrismaService } from "../../common/services/prisma.service.js";
 import { buildQueryOptions } from "../../utils/buildQueryOptions.js";
 import employeeQueryConfig from "./employee-query-config.js";
 
-import Joi from "joi";class EmployeeService {
+import Joi from "joi";
+class EmployeeService {
     constructor(){
         this.prisma = new PrismaService
     }
@@ -93,15 +94,14 @@ import Joi from "joi";class EmployeeService {
 
         return {
             data,
-            meta:
-                hasPagination
-                    ? {
-                        totalItems: count,
-                        totalPages,
-                        currentpage: Number(page),
-                        itemsPerPage: Number(limit),
-                    }
-                    : null,
+            meta: hasPagination
+        ? {
+            totalItems: count,
+            totalPages,
+            currentpage: Number(page),
+            itemsPerPage: Number(limit),
+        }
+            : null,
         };
     }
 
