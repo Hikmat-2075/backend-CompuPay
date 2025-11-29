@@ -75,6 +75,7 @@ class EmployeeAllowancesService {
     async list({ query } = {}) {
         const options = buildQueryOptions(employeeAllowancesQueryConfig, query);
 
+        options.include = employeeAllowancesQueryConfig.relations;
         const [data, count] = await Promise.all([
             this.prisma.employeeAllowances.findMany(options),
             this.prisma.employeeAllowances.count({ where: options.where })
@@ -120,14 +121,37 @@ class EmployeeAllowancesService {
 
 
     async remove(id) {
-        const deleted = await this.prisma.employeeAllowances.delete({
-            where: { id }
-        });
+        return this.prisma.$transaction(async (tx) => {
+            // Cek apakah allowance ada
+            const current = await tx.employeeAllowances.findUnique({
+                where: { id }
+            });
 
-        return {
-            message: "Employee Allowance deleted successfully",
-            data: deleted
-        };
+            if (!current) {
+                throw BaseError.notFound("Employee Allowance not found");
+            }
+
+            // Cek apakah dipakai di payroll item (jika ada relasi)
+            const inUse = await tx.payrollItem.findFirst({
+                where: { allowanceId: id } // sesuaikan jika field berbeda
+            });
+
+            if (inUse) {
+                throw BaseError.badRequest(
+                    "This allowance cannot be deleted because it is already used in payroll."
+                );
+            }
+
+            // Hapus
+            const deleted = await tx.employeeAllowances.delete({
+                where: { id }
+            });
+
+            return {
+                message: "Employee Allowance deleted successfully",
+                //data: deleted
+            };
+        });
     }
 }
 
