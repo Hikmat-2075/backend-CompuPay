@@ -9,6 +9,8 @@ import employeeRoutes from "./domains/employee/employee-routes.js";
 import payrollRoutes from "./domains/payroll/payroll-routes.js";
 import employeeAllowancesRoutes from "./domains/employeeAllowances/employeeAllowances-routes.js";
 import AllowancesRoutes from "./domains/allowances/allowances-routes.js"
+import employeeDeductionRoutes from "./domains/employeeDeductions/employeeDeductions-routes.js"
+import payrollItemRoutes from "./domains/payrollItem/payrollItem-routes.js"
 
 const router = express.Router();
 
@@ -46,12 +48,20 @@ const appsRoutes = [
 		route: payrollRoutes,
 	},
 	{
-		path: "/employee/Allowance",
+		path: "/payrollItem",
+		route: payrollItemRoutes,
+	},
+	{
+		path: "/employeeAllowance",
 		route: employeeAllowancesRoutes,
 	},
 	{
 		path: "/allowances",
 		route: AllowancesRoutes,
+	},
+	{
+		path: "/employeeDeduction",
+		route: employeeDeductionRoutes,
 	}
 ];
 

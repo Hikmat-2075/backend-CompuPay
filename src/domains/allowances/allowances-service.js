@@ -52,6 +52,8 @@ class AllowancesService {
     async list({query} = {}) {
         const options = buildQueryOptions(allowancesQueryConfig, query);
 
+        options.include = allowancesQueryConfig.relations;
+        
         const [data, count] = await Promise.all([
             this.prisma.allowances.findMany(options),
             this.prisma.allowances.count({ where: options.where }),

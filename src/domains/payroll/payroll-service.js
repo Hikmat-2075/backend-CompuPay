@@ -47,6 +47,7 @@ class PayrollService {
 
     async list({ query } = {}) {
         const options = buildQueryOptions(payrollQueryConfig, query);
+        options.include = payrollQueryConfig.relations;
         const [data, count] = await Promise.all([
             this.prisma.payroll.findMany(options),
             this.prisma.payroll.count({ where: options.where }),

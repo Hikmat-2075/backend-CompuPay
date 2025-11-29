@@ -27,6 +27,7 @@ class EmployeeAllowancesController {
 
     async update(req, res) {
         const result = await employeeAllowancesService.update(
+            req.employeeAllowances,
             req.params.id,
             req.body
         );

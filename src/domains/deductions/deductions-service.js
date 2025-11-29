@@ -51,6 +51,8 @@ class DeductionsService {
     async list({query} = {}) {
         const options = buildQueryOptions(deductionsQueryConfig, query);
 
+        options.include = deductionsQueryConfig.relations;
+
         const [data, count] = await Promise.all([
             this.prisma.deductions.findMany(options),
             this.prisma.deductions.count({ where: options.where }),
@@ -110,23 +112,31 @@ class DeductionsService {
     }
 
     async remove(id) {
-        const current = await this.prisma.deductions.findUnique({
-            where: { id }
+        return this.prisma.$transaction(async (tx) => {
+            const current = await tx.deductions.findUnique({
+                where: { id }
+            });
+
+            if (!current) {
+                throw BaseError.notFound("Deduction not found");
+            }
+
+            // Hapus semua relasi sebelum hapus master
+            await tx.employeeDeductions.deleteMany({
+                where: { deductionId: id }
+            });
+
+            const deleted = await tx.deductions.delete({
+                where: { id }
+            });
+
+            return {
+                message: "Deduction deleted successfully",
+                // data: deleted
+            };
         });
-
-        if (!current) {
-            throw BaseError.notFound("Deduction not found");
-        }
-
-        const deleted = await this.prisma.deductions.delete({
-            where: { id }
-        });
-
-        return {
-            message: "Deduction deleted successfully"
-            // optional: data: deleted
-        };
     }
+
 
 }
 

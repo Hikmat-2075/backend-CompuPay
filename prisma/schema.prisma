@@ -34,6 +34,12 @@ enum StatusPayroll {
   CANCELLED
 }
 
+enum TypeDeduction {
+  MONTHLY
+  SEMI_MONTHLY
+  ONCE
+}
+
 enum Role {
   SUPER_ADMIN
   ADMIN
@@ -151,7 +157,7 @@ model EmployeeDeductions {
   id             String    @id @default(uuid())
   employeeId     String
   deductionId    String
-  type           String
+  type           TypeDeduction
   amount         Int
   effective_date DateTime
   created_at     DateTime  @default(now())
@@ -176,6 +182,8 @@ model Attendance {
 
   @@map("Attendance")
 }
+
+//gaji
 model Payroll {
   id           String        @id @default(uuid())
   ref_no       String

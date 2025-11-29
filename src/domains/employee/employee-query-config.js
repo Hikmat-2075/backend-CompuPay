@@ -34,7 +34,7 @@ const employeeQueryConfig = {
         employeeAllowances: true,
         employeeDeductions: true,
         attendance: true,
-        payrollItem: true,
+        payrollItems: true,
     },
 
     // Field tanggal yang boleh dipakai untuk range query (?startDate=&endDate=)

@@ -9,7 +9,7 @@ class EmployeeService {
     constructor(){
         this.prisma = new PrismaService
     }
-    async create(currentUser, data) {
+    async create(data) {
         let validation = "";
         const stack = [];
         const fail = (msg, path) => {
@@ -81,6 +81,8 @@ class EmployeeService {
 
     async list({ query } = {}) {
         const options = buildQueryOptions(employeeQueryConfig, query);
+
+        options.include = employeeQueryConfig.relations;
 
         const [data, count] = await Promise.all([
             this.prisma.employee.findMany(options),
