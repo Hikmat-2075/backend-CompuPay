@@ -1,5 +1,7 @@
 import Joi from "joi";
 
+const typeEnum = ["MONTHLY", "SEMI_MONTHLY", "ONCE"]; // sesuai Prisma
+
 const employeeAllowancesCreateSchema = Joi.object({
     employeeId: Joi.string().uuid().required().messages({
         "any.required": "Employee ID is required.",
@@ -11,8 +13,9 @@ const employeeAllowancesCreateSchema = Joi.object({
         "string.guid": "Allowance ID must be a valid UUID."
     }),
 
-    type: Joi.string().trim().required().messages({
-        "any.required": "Type is required."
+    type: Joi.string().valid(...typeEnum).required().messages({
+        "any.required": "Type is required.",
+        "any.only": `Type must be one of: ${typeEnum.join(", ")}`
     }),
 
     amount: Joi.number().integer().positive().required().messages({
@@ -21,11 +24,12 @@ const employeeAllowancesCreateSchema = Joi.object({
         "number.positive": "Amount must be greater than 0."
     }),
 
-    effective_date: Joi.date().required().messages({
+    effective_date: Joi.date().iso().required().messages({
         "any.required": "Effective date is required.",
-        "date.base": "Effective date must be a valid date."
-    })
+        "date.base": "Effective date must be a valid ISO date."
+    }),
 });
+
 
 
 
@@ -34,21 +38,24 @@ const employeeAllowancesUpdateSchema = Joi.object({
         "string.guid": "Allowance ID must be a valid UUID."
     }),
 
-    type: Joi.string().trim(),
+    type: Joi.string().valid(...typeEnum).messages({
+        "any.only": `Type must be one of: ${typeEnum.join(", ")}`
+    }),
 
     amount: Joi.number().integer().positive().messages({
         "number.base": "Amount must be a number.",
         "number.positive": "Amount must be greater than 0."
     }),
 
-    effective_date: Joi.date().messages({
-        "date.base": "Effective date must be a valid date."
+    effective_date: Joi.date().iso().messages({
+        "date.base": "Effective date must be a valid ISO date."
     })
-})
-.min(1)
-.messages({
+    })
+    .min(1)
+    .messages({
     "object.min": "At least one field must be updated."
 });
+
 
 
 

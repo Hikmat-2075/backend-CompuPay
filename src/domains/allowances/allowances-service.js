@@ -9,45 +9,40 @@ class AllowancesService {
     constructor(){
         this.prisma = new PrismaService
     }
-    async create(currentUser, data) {
+    async create(data) {
         let validation = "";
         const stack = [];
         const fail = (msg, path) => {
             validation += (validation ? " " : "") + msg;
-            stack.push({message: msg, path: [path]});
+            stack.push({ message: msg, path: [path] });
         };
+
         return this.prisma.$transaction(async (tx) => {
             const allowancesExist = await tx.allowances.findFirst({
-                where: {allowance: data.allowance}
+            where: { allowance: data.allowance }
             });
 
-            if(allowancesExist) {
-                fail("Allowances already exist", "allowances");
-                throw new Joi.validation(validation, stack);
+            if (allowancesExist) {
+            fail("Allowance already exists", "allowance");
+            throw new Joi.ValidationError(validation, stack);
             }
 
-            const created = await tx.allowances.create({
-                data
-            });
-
-            if(!created) {
-                throw new Error("Failed to create Allowances")
-            }
-
+            const created = await tx.allowances.create({ data });
             return created;
         });
     }
+
 
     async detail(id) {
         const allowances = await this.prisma.allowances.findUnique({
             where: { id },
             include: allowancesQueryConfig.relations,
         });
-        if (!allowances) {
-            throw BaseError.notFound("Allowances not found");
-        }
+
+        if (!allowances) throw BaseError.notFound("Allowances not found");
         return allowances;
     }
+
 
     async list({query} = {}) {
         const options = buildQueryOptions(allowancesQueryConfig, query);
@@ -77,59 +72,72 @@ class AllowancesService {
         };
     }
 
-    async update(currentUser, id, data) {
+    async update(id, data) {
         return this.prisma.$transaction(async (tx) => {
-            const current = await tx.allowances.findUnique({ where: {id}});
-            if (!current) {
-                throw BaseError.notFound("Allowances not found");
-            }
+            const current = await tx.allowances.findUnique({ where: { id } });
+            if (!current) throw BaseError.notFound("Allowances not found");
+
             let validation = "";
             const stack = [];
-            const fail = (message, path) => {
-            validation += (validation ? " " : "") + message;
-                stack.push({ message, path: [path] });
+            const fail = (msg, path) => {
+            validation += (validation ? " " : "") + msg;
+            stack.push({ message: msg, path: [path] });
             };
-            
+
             if (data.allowance) {
-                const allowancesExist = await tx.allowances.findFirst({
-                    where: {
-                        allowance: data.allowance,
-                        NOT: { id }
-                    }
-                });
-            
-                if (allowancesExist) {
-                    fail("Allowances already exists", "allowance");
-                    throw new Joi.ValidationError(validation, stack);
+            const exists = await tx.allowances.findFirst({
+                where: {
+                allowance: data.allowance,
+                NOT: { id }
                 }
+            });
+            if (exists) {
+                fail("Allowance already exists", "allowance");
+                throw new Joi.ValidationError(validation, stack);
+            }
             }
 
-            const updated = await tx.allowances.update({
-                where: { id },
-                data,
+            return tx.allowances.update({
+            where: { id },
+            data
             });
-            return updated;
-        })
+        });
     }
+
 
     async remove(id) {
-        const current = await this.prisma.allowances.findUnique({
-            where: { id }
+        return this.prisma.$transaction(async (tx) => {
+            const current = await tx.allowances.findUnique({
+                where: { id }
+            });
+
+            if (!current) {
+                throw BaseError.notFound("Allowance not found");
+            }
+
+            // Cek apakah allowance digunakan employee
+            const usageCount = await tx.employeeAllowances.count({
+                where: { allowanceId: id }
+            });
+
+            if (usageCount > 0) {
+                throw BaseError.badRequest(
+                    "Cannot delete allowance because it is still assigned to employees"
+                );
+            }
+
+            // Aman → boleh delete allowance
+            await tx.allowances.delete({
+                where: { id }
+            });
+
+            return {
+                message: "Allowance deleted successfully"
+            };
         });
-
-        if (!current) {
-            throw BaseError.notFound("Allowances not found");
-        }
-
-        const deleted = await this.prisma.allowances.delete({
-            where: { id }
-        });
-
-        return {
-            message: "Allowances deleted successfully"
-            // optional: data: deleted
-        };
     }
+
+
 }
 
 export default new AllowancesService();

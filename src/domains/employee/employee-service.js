@@ -3,6 +3,8 @@ import BaseError from "../../base_classes/base-error.js";
 import { PrismaService } from "../../common/services/prisma.service.js";
 import { buildQueryOptions } from "../../utils/buildQueryOptions.js";
 import employeeQueryConfig from "./employee-query-config.js";
+import path from "path";
+import fs from "fs";
 
 import Joi from "joi";
 class EmployeeService {
@@ -107,7 +109,7 @@ class EmployeeService {
         };
     }
 
-    async update(currentUser, id, data) {
+    async update(currentUser, id, data, file) {
         return this.prisma.$transaction(async (tx) => {
             const current = await tx.employee.findUnique({ where: { id } });
             if (!current) throw BaseError.notFound("Employee not found");
@@ -122,12 +124,8 @@ class EmployeeService {
             // Cek duplicate employee_number
             if (data.employee_number) {
                 const exist = await tx.employee.findFirst({
-                    where: {
-                        employee_number: data.employee_number,
-                        NOT: { id },
-                    },
+                    where: { employee_number: data.employee_number, NOT: { id } }
                 });
-
                 if (exist) {
                     fail("Employee number already exists", "employee_number");
                     throw new Joi.ValidationError(validation, stack);
@@ -137,12 +135,8 @@ class EmployeeService {
             // Cek duplicate email
             if (data.email) {
                 const emailExist = await tx.employee.findFirst({
-                    where: {
-                        email: data.email,
-                        NOT: { id },
-                    },
+                    where: { email: data.email, NOT: { id } }
                 });
-
                 if (emailExist) {
                     fail("Email already exists", "email");
                     throw new Joi.ValidationError(validation, stack);
@@ -151,10 +145,7 @@ class EmployeeService {
 
             // Validasi department jika update
             if (data.departmentId) {
-                const dep = await tx.department.findUnique({
-                    where: { id: data.departmentId },
-                });
-
+                const dep = await tx.department.findUnique({ where: { id: data.departmentId } });
                 if (!dep) {
                     fail("Department not found", "departmentId");
                     throw new Joi.ValidationError(validation, stack);
@@ -163,19 +154,37 @@ class EmployeeService {
 
             // Validasi position jika update
             if (data.positionId) {
-                const pos = await tx.position.findUnique({
-                    where: { id: data.positionId },
-                });
-
+                const pos = await tx.position.findUnique({ where: { id: data.positionId } });
                 if (!pos) {
                     fail("Position not found", "positionId");
                     throw new Joi.ValidationError(validation, stack);
                 }
             }
 
+            // 🔥 Handle upload profile image
+            if (file) {
+                const uploadsDir = path.join(process.cwd(), "public/assets/images");
+                if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+                const filename = Date.now() + "-" + file.originalname;
+                const filepath = path.join(uploadsDir, filename);
+
+                // simpan file ke folder
+                fs.writeFileSync(filepath, file.buffer);
+
+                // hapus file lama jika ada
+                if (current.profile_uri) {
+                    const oldPath = path.join(process.cwd(), "public", current.profile_uri);
+                    if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+                }
+
+                // simpan path ke database (tanpa /public agar bisa diakses via static express)
+                data.profile_uri = `assets/images/${filename}`;
+            }
+
             const updated = await tx.employee.update({
-                where: { id },
-                data,
+            where: { id },
+            data
             });
 
             return updated;

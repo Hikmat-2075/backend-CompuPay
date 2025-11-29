@@ -40,6 +40,12 @@ enum TypeDeduction {
   ONCE
 }
 
+enum TypeAllowance {
+  MONTHLY
+  SEMI_MONTHLY
+  ONCE
+}
+
 enum Role {
   SUPER_ADMIN
   ADMIN
@@ -128,13 +134,13 @@ model EmployeeAllowances {
   id             String    @id @default(uuid())
   employeeId     String
   allowanceId    String
-  type           String
+  type           TypeAllowance
   amount         Int
   effective_date DateTime
   created_at     DateTime  @default(now())
   updated_at     DateTime  @updatedAt
 
-  employee   Employee   @relation(fields: [employeeId], references: [id])
+  employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   allowance  Allowances @relation(fields: [allowanceId], references: [id])
 
   @@map("Employee_Allowances")
@@ -163,7 +169,7 @@ model EmployeeDeductions {
   created_at     DateTime  @default(now())
   updated_at     DateTime  @updatedAt
 
-  employee  Employee   @relation(fields: [employeeId], references: [id])
+  employee  Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   deduction Deductions @relation(fields: [deductionId], references: [id])
 
   @@map("Employee_Deductions")
@@ -178,7 +184,7 @@ model Attendance {
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
 
-  employee Employee @relation(fields: [employeeId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@map("Attendance")
 }
@@ -214,7 +220,7 @@ model PayrollItem {
   updated_at       DateTime @updatedAt
 
   payroll  Payroll  @relation(fields: [payrollId], references: [id])
-  employee Employee @relation(fields: [employeeId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@map("Payroll_Item")
 }

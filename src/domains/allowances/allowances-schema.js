@@ -1,15 +1,14 @@
 import Joi from "joi";
 
 const allowancesCreateSchema = Joi.object({
-    allowances: Joi.string().required().messages({
+    allowance: Joi.string().required().messages({
         "string.empty": "Allowances is required",
-        "any.required": "Allowances is required",
     }),
     description: Joi.string().allow(null, "").optional(),
 });
 
 const allowancesUpdateSchema = Joi.object({
-    allowances: Joi.string().optional(),
+    allowance: Joi.string().optional(),
     description: Joi.string().allow(null, "").optional(),
 });
 

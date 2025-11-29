@@ -151,13 +151,19 @@ class PayrollItemService {
                 throw BaseError.notFound("Payroll Item not found");
             }
 
-            // Optional: block delete if payroll already approved / locked
+            // ambil payroll
             const payroll = await tx.payroll.findUnique({
                 where: { id: current.payrollId }
             });
-            if (payroll?.status === "APPROVED" || payroll?.status === "LOCKED") {
+
+            if (!payroll) {
+                throw BaseError.notFound("Payroll not found");
+            }
+
+            // hanya payroll berstatus draft yang boleh diubah/dihapus itemnya
+            if (payroll.status !== "DRAFT") {
                 throw BaseError.badRequest(
-                    "This payroll item cannot be deleted because the payroll has been locked/approved"
+                    "Payroll Item cannot be deleted because the payroll is no longer in DRAFT status"
                 );
             }
 
@@ -167,7 +173,7 @@ class PayrollItemService {
 
             return {
                 message: "Payroll Item deleted successfully",
-                data: deleted
+                // data: deleted
             };
         });
     }
