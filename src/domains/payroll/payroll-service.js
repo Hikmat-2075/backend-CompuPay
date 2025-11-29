@@ -108,9 +108,38 @@ class PayrollService {
     }
 
     async remove(id) {
-        const deleted = await this.prisma.payroll.delete({ where: { id } });
-        return { message: "Payroll deleted successfully", data: deleted };
+        return this.prisma.$transaction(async (tx) => {
+            const payroll = await tx.payroll.findUnique({
+                where: { id }
+            });
+
+            if (!payroll) {
+                throw BaseError.notFound("Payroll not found");
+            }
+
+            // hanya payroll berstatus DRAFT yang boleh dihapus
+            if (payroll.status !== "DRAFT") {
+                throw BaseError.badRequest(
+                    "Only payroll with DRAFT status can be deleted"
+                );
+            }
+
+            // hapus payroll item dulu
+            await tx.payrollItem.deleteMany({
+                where: { payrollId: id }
+            });
+
+            // baru hapus payroll
+            await tx.payroll.delete({
+                where: { id }
+            });
+
+            return {
+                message: "Payroll deleted successfully"
+            };
+        });
     }
+
 }
 
 export default new PayrollService();

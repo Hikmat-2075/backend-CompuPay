@@ -164,15 +164,40 @@ class PositionService {
 
     async remove(id) {
         return this.prisma.$transaction(async (tx) => {
+            const current = await tx.position.findUnique({
+            where: { id }
+            });
+
+            if (!current) {
+            throw BaseError.notFound("Position not found");
+            }
+
+            // Cek apakah posisi sedang digunakan oleh employee
+            const employeeCount = await tx.employee.count({
+            where: { positionId: id }
+            });
+
+            if (employeeCount > 0) {
+            throw BaseError.badRequest(
+                "Cannot delete position because it is still assigned to employees"
+            );
+            }
+
+            // Hapus dulu level jabatan
             await tx.positionLevel.deleteMany({ where: { positionId: id } });
-            const deleted = await tx.position.delete({ where: { id } });
+
+            // Baru hapus position
+            const deleted = await tx.position.delete({
+            where: { id }
+            });
 
             return {
-                message: "Position deleted successfully",
-                data: deleted
+            message: "Position deleted successfully",
+            // data: deleted
             };
         });
     }
+
 }
 
 export default new PositionService();

@@ -121,10 +121,16 @@ class DeductionsService {
                 throw BaseError.notFound("Deduction not found");
             }
 
-            // Hapus semua relasi sebelum hapus master
-            await tx.employeeDeductions.deleteMany({
+            // Cek apakah deduction sedang dipakai employee
+            const usageCount = await tx.employeeDeductions.count({
                 where: { deductionId: id }
             });
+
+            if (usageCount > 0) {
+            throw BaseError.badRequest(
+                "Cannot delete deduction because it is still assigned to employees"
+            );
+            }
 
             const deleted = await tx.deductions.delete({
                 where: { id }
@@ -136,6 +142,7 @@ class DeductionsService {
             };
         });
     }
+
 
 
 }

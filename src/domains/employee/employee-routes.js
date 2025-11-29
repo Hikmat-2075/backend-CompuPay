@@ -8,6 +8,7 @@ import {
 import tryCatch from "../../utils/tryCatcher.js";
 import validateCredentials from '../../middlewares/validate-credentials-middleware.js';
 import authTokenMiddleware from "../../middlewares/auth-token-middleware.js";
+import uploadFile from "../../middlewares/upload-file-middleware.js"
 
 class EmployeeRoutes extends BaseRoutes {
     routes() {
@@ -26,6 +27,7 @@ class EmployeeRoutes extends BaseRoutes {
         ]);
         this.router.put("/:id", [
             validateCredentials(employeeUpdateSchema),
+            uploadFile("image").single("profile_uri"),
             authTokenMiddleware.authenticate,
             tryCatch(EmployeeController.update)
         ]);
