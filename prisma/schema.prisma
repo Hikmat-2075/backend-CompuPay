@@ -23,13 +23,11 @@ enum LogType {
 
 enum TypePayroll {
   MONTHLY
-  BONUS
-  ADHOC
+  SEMI_MONTHLY
 }
 
 enum StatusPayroll {
-  DRAFT
-  POSTED
+  PENDING
   PAID
   CANCELLED
 }
@@ -192,7 +190,7 @@ model Attendance {
 //gaji
 model Payroll {
   id           String        @id @default(uuid())
-  ref_no       String
+  ref_no       String        @unique
   date_from    DateTime
   date_to      DateTime
   type         TypePayroll
@@ -212,7 +210,7 @@ model PayrollItem {
   present          Int?
   absent           Int?
   late             Int?
-  salary           Decimal?    // gunakan Decimal untuk akurasi keuangan
+  salary           Decimal?
   allowance_amount Decimal?
   deductions       Decimal?
   net              Decimal?

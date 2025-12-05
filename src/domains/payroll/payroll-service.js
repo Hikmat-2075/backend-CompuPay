@@ -27,10 +27,30 @@ class PayrollService {
                 throw new Joi.ValidationError(validation, stack);
             }
 
-            const created = await tx.payroll.create({ data });
-            if (!created) throw new Error("Failed to create Payroll");
+            const { items, ...payrollData } = data;
 
-            return created;
+            if (!items || items.length === 0) {
+                fail("Payroll must contain at least one payroll item", "items");
+                throw new Joi.ValidationError(validation, stack);
+            }
+            const createdPayroll = await tx.payroll.create({
+                data: payrollData
+            });
+            if (!createdPayroll) throw new Error("Failed to create Payroll");
+
+            const itemsData = items.map((item) => ({
+                ...item,
+                payrollId: createdPayroll.id
+            }));
+
+            await tx.payrollItem.createMany({
+                data: itemsData
+            });
+
+            return await tx.payroll.findUnique({
+                where: { id: createdPayroll.id },
+                include: payrollQueryConfig.relations
+            });
         });
     }
 
@@ -71,7 +91,7 @@ class PayrollService {
         };
     }
 
-    async update(currentUser, id, data) {
+    async update(id, data) {
         return this.prisma.$transaction(async (tx) => {
             const current = await tx.payroll.findUnique({ where: { id } });
             if (!current) throw BaseError.notFound("Payroll not found");
@@ -83,13 +103,10 @@ class PayrollService {
                 stack.push({ message: msg, path: [path] });
             };
 
-            // Cek duplicate ref_no jika ref_no diupdate
+            // cek ref_no duplicate
             if (data.ref_no) {
                 const refExist = await tx.payroll.findFirst({
-                    where: {
-                        ref_no: data.ref_no,
-                        NOT: { id }
-                    }
+                    where: { ref_no: data.ref_no, NOT: { id } }
                 });
 
                 if (refExist) {
@@ -98,14 +115,29 @@ class PayrollService {
                 }
             }
 
+            const { items, ...payrollData } = data;
+
+            // 1. Update payroll fields
             const updated = await tx.payroll.update({
                 where: { id },
-                data,
+                data: payrollData
             });
 
-            return updated;
+            // 2. Jika ada items dikirim, replace semua item
+            if (items) {
+                await tx.payrollItem.deleteMany({ where: { payrollId: id } });
+                const newItems = items.map((item) => ({ ...item, payrollId: id }));
+                await tx.payrollItem.createMany({ data: newItems });
+            }
+
+            // 3. return hasil lengkap
+            return await tx.payroll.findUnique({
+                where: { id },
+                include: payrollQueryConfig.relations
+            });
         });
     }
+
 
     async remove(id) {
         return this.prisma.$transaction(async (tx) => {
@@ -118,7 +150,7 @@ class PayrollService {
             }
 
             // hanya payroll berstatus DRAFT yang boleh dihapus
-            if (payroll.status !== "DRAFT") {
+            if (payroll.status !== "PENDING") {
                 throw BaseError.badRequest(
                     "Only payroll with DRAFT status can be deleted"
                 );
