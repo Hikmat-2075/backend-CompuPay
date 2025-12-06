@@ -1,7 +1,5 @@
 import Joi from "joi";
 
-import Joi from "joi";
-
 const payrollCreateSchema = Joi.object({
     ref_no: Joi.string().trim().required().messages({
         "string.empty": "Reference number is required",

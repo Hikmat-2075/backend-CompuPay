@@ -49,6 +49,13 @@ enum Role {
   ADMIN
 }
 
+model Otp {
+  email      String   @id 
+  otp        String
+  expired_at DateTime
+  created_at DateTime @default(now())
+}
+
 model Employee {
   id               String               @id @default(uuid())
   employee_number  String               @unique
