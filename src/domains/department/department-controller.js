@@ -4,7 +4,7 @@ import departmentService from "./department-service.js";
 class DepartmentController {
 
     async create(req, res) {
-        const result = await departmentService.create(req.body);
+        const result = await departmentService.create(req.user, req.body);
         return createdResponse(res, result);
     }
 
@@ -27,7 +27,7 @@ class DepartmentController {
 
     async update(req, res) {
         const result = await departmentService.update(
-            req.department,
+            req.user,
             req.params.id,
             req.body
         );

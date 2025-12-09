@@ -4,7 +4,7 @@ import payrollService from "./payroll-service.js";
 class PayrollController {
 
     async create(req, res) {
-        const result = await payrollService.create(req.body);
+        const result = await payrollService.create(req.user, req.body);
         return createdResponse(res, result);
     }
     
@@ -27,7 +27,7 @@ class PayrollController {
     
     async update(req, res) {
         const result = await payrollService.update(
-            req.payroll,
+            req.user,
             req.params.id,
             req.body
         );

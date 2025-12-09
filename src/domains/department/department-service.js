@@ -8,7 +8,7 @@ class DepartmentService {
     constructor(){
         this.prisma = new PrismaService
     }
-    async create(data) {
+    async create(currentUser, data) {
         if (!data) throw BaseError.badRequest("Request body is required");
 
         let validation = "";
@@ -17,6 +17,11 @@ class DepartmentService {
             validation += (validation ? " " : "") + msg;
             stack.push({ message: msg, path: [path] });
         };
+
+        if (currentUser.role !== "ADMIN") {
+            fail("Forbidden, only ADMIN is allowed to create Department", "role");
+            throw new Joi.ValidationError(validation, stack);
+        }
 
         return this.prisma.$transaction(async (tx) => {
             const departmentExist = await tx.department.findFirst({
@@ -85,6 +90,11 @@ class DepartmentService {
             validation += (validation ? " " : "") + message;
                 stack.push({ message, path: [path] });
             };
+
+            if (currentUser.role !== "ADMIN") {
+                fail("Forbidden, only ADMIN is allowed to update Department", "role");
+                throw new Joi.ValidationError(validation, stack);
+            }
             
             if (data.name) {
                 const departmentExist = await tx.department.findFirst({

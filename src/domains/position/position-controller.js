@@ -4,7 +4,7 @@ import positionService from "./position-service.js";
 class PositionController {
 
     async create(req, res) {
-        const result = await positionService.create(req.body);
+        const result = await positionService.create(req.user, req.body);
         return createdResponse(res, result);
     }
 
@@ -27,7 +27,7 @@ class PositionController {
 
     async update(req, res) {
         const result = await positionService.update(
-            req.position,
+            req.user,
             req.params.id,
             req.body
         );

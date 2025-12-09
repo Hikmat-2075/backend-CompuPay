@@ -58,11 +58,29 @@ class AuthController {
 
 	async sendOtp(req, res) {
 		const { email } = req.body;
-
 		const otp = await AuthService.sendOtp(email);
-
 		return successResponse(res, null, "OTP sent successfully");
 	}
+
+	async forgetPassword(req, res) {
+		const { email } = req.body;
+		await AuthService.forgetPassword(email);
+		return successResponse(res, null, "OTP has been sent to your email");
+	}
+
+	async verifyOtp(req, res) {
+		const { email, otp } = req.body;
+		const result = await AuthService.verifyOtp(email, otp); // menerima reset_token
+		return successResponse(res, result, "OTP verified");
+	}
+
+
+	async resetPassword(req, res) {
+		const { reset_token, new_password } = req.body;
+		await AuthService.resetPassword(reset_token, new_password);
+		return successResponse(res, null, "Password reset successful");
+	}
+
 }
 
 export default new AuthController();

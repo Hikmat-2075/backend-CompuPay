@@ -4,7 +4,7 @@ import allowancesService from "./allowances-service.js";
 class AllowancesController {
 
     async create(req, res) {
-        const result = await allowancesService.create(req.body);
+        const result = await allowancesService.create(req.user, req.body);
         return createdResponse(res, result);
     }
 
@@ -27,7 +27,7 @@ class AllowancesController {
 
     async update() {
         const result = await allowancesService.update(
-            req.allowances,
+            req.user,
             req.params.id,
             req.body
         );

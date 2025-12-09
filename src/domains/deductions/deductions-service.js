@@ -8,13 +8,19 @@ class DeductionsService {
     constructor(){
         this.prisma = new PrismaService
     }
-    async create(data) {
+    async create(currentUser, data) {
         let validation = "";
         const stack = [];
         const fail = (msg, path) => {
             validation += (validation ? " " : "") + msg;
             stack.push({message: msg, path: [path]});
         };
+
+        if (currentUser.role !== "ADMIN") {
+            fail("Forbidden, only ADMIN is allowed to create Deduction", "role");
+            throw new Joi.ValidationError(validation, stack);
+        }
+
         return this.prisma.$transaction(async (tx) => {
             const deductionExist = await tx.deductions.findFirst({
                 where: {deduction: data.deduction}
@@ -88,6 +94,11 @@ class DeductionsService {
             validation += (validation ? " " : "") + message;
                 stack.push({ message, path: [path] });
             };
+
+            if (currentUser.role !== "ADMIN") {
+                fail("Forbidden, only ADMIN is allowed to update Deduction", "role");
+                throw new Joi.ValidationError(validation, stack);
+            }
             
             if (data.deduction) {
                 const deductionExist = await tx.deductions.findFirst({

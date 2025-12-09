@@ -9,13 +9,18 @@ class PositionService {
         this.prisma = new PrismaService();
     }
 
-    async create(data) {
+    async create(currentUser, data) {
         let validation = "";
         const stack = [];
         const fail = (msg, path) => {
             validation += (validation ? " " : "") + msg;
             stack.push({ message: msg, path: [path] });
         };
+
+        if (currentUser.role !== "ADMIN") {
+            fail("Forbidden, only ADMIN is allowed to create Position", "role");
+            throw new Joi.ValidationError(validation, stack);
+        }
 
         return this.prisma.$transaction(async (tx) => {
             const positionExist = await tx.position.findFirst({
@@ -122,6 +127,11 @@ class PositionService {
                 validation += (validation ? " " : "") + msg;
                 stack.push({ message: msg, path: [path] });
             };
+
+            if (currentUser.role !== "ADMIN") {
+                fail("Forbidden, only ADMIN is allowed to update Position", "role");
+                throw new Joi.ValidationError(validation, stack);
+            }
 
             if (data.name) {
                 const positionExist = await tx.position.findFirst({

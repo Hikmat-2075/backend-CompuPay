@@ -4,7 +4,7 @@ import employeeAllowancesService from "./employeeAllowances-service.js";
 class EmployeeAllowancesController {
 
     async create(req, res) {
-        const result = await employeeAllowancesService.create(req.body);
+        const result = await employeeAllowancesService.create(req.user, req.body);
         return createdResponse(res, result);
     }
 
@@ -27,7 +27,7 @@ class EmployeeAllowancesController {
 
     async update(req, res) {
         const result = await employeeAllowancesService.update(
-            req.employeeAllowances,
+            req.user,
             req.params.id,
             req.body
         );

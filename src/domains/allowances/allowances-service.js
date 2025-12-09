@@ -9,13 +9,18 @@ class AllowancesService {
     constructor(){
         this.prisma = new PrismaService
     }
-    async create(data) {
+    async create(currentUser, data) {
         let validation = "";
         const stack = [];
         const fail = (msg, path) => {
             validation += (validation ? " " : "") + msg;
             stack.push({ message: msg, path: [path] });
         };
+
+        if (currentUser.role !== "ADMIN") {
+            fail("Forbidden, only ADMIN is allowed to create Allowance", "role");
+            throw new Joi.ValidationError(validation, stack);
+        }
 
         return this.prisma.$transaction(async (tx) => {
             const allowancesExist = await tx.allowances.findFirst({
@@ -72,34 +77,39 @@ class AllowancesService {
         };
     }
 
-    async update(id, data) {
+    async update(currentUser ,id, data) {
         return this.prisma.$transaction(async (tx) => {
             const current = await tx.allowances.findUnique({ where: { id } });
             if (!current) throw BaseError.notFound("Allowances not found");
 
             let validation = "";
-            const stack = [];
-            const fail = (msg, path) => {
-            validation += (validation ? " " : "") + msg;
-            stack.push({ message: msg, path: [path] });
+                const stack = [];
+                const fail = (msg, path) => {
+                validation += (validation ? " " : "") + msg;
+                stack.push({ message: msg, path: [path] });
             };
 
+        if (currentUser.role !== "ADMIN") {
+            fail("Forbidden, only ADMIN is allowed to update Allowance", "role");
+            throw new Joi.ValidationError(validation, stack);
+        }
+
             if (data.allowance) {
-            const exists = await tx.allowances.findFirst({
-                where: {
-                allowance: data.allowance,
-                NOT: { id }
+                const exists = await tx.allowances.findFirst({
+                    where: {
+                    allowance: data.allowance,
+                    NOT: { id }
+                    }
+                });
+                if (exists) {
+                    fail("Allowance already exists", "allowance");
+                    throw new Joi.ValidationError(validation, stack);
                 }
-            });
-            if (exists) {
-                fail("Allowance already exists", "allowance");
-                throw new Joi.ValidationError(validation, stack);
-            }
             }
 
             return tx.allowances.update({
-            where: { id },
-            data
+                where: { id },
+                data
             });
         });
     }

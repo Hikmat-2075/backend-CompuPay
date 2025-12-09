@@ -9,13 +9,18 @@ class EmployeeDeductionsService {
         this.prisma = new PrismaService();
     }
 
-    async create(data) {
+    async create(currentUser, data) {
         let validation = "";
         const stack = [];
         const fail = (msg, path) => {
             validation += (validation ? " " : "") + msg;
             stack.push({ message: msg, path: [path] });
         };
+
+        if (currentUser.role !== "ADMIN") {
+            fail("Forbidden, only ADMIN is allowed to create Employee Deduction", "role");
+            throw new Joi.ValidationError(validation, stack);
+        }
 
         return this.prisma.$transaction(async (tx) => {
 
@@ -98,18 +103,76 @@ class EmployeeDeductionsService {
         };
     }
 
-    async update(id, data) {
+    async update(currentUser, id, data) {
+        let validation = "";
+        const stack = [];
+        const fail = (msg, path) => {
+            validation += (validation ? " " : "") + msg;
+            stack.push({ message: msg, path: [path] });
+        };
+
+        // Role restriction
+        if (currentUser.role !== "ADMIN") {
+            fail("Forbidden, only ADMIN is allowed to update Employee Deduction", "role");
+            throw new Joi.ValidationError(validation, stack);
+        }
+
+        // Joi schema validation
+        const { error } = employeeDeductionsUpdateSchema.validate(data, { abortEarly: false });
+        if (error) throw error;
+
         return this.prisma.$transaction(async (tx) => {
             const current = await tx.employeeDeductions.findUnique({ where: { id } });
             if (!current) throw BaseError.notFound("Employee Deduction not found");
+
+            // ✔ Validasi userId (employee) jika diganti
+            if (data.userId) {
+                const employee = await tx.user.findUnique({
+                    where: { id: data.userId }
+                });
+                if (!employee) {
+                    fail("Employee not found", "userId");
+                    throw new Joi.ValidationError(validation, stack);
+                }
+            }
+
+            // ✔ Validasi deductionId jika diganti
+            if (data.deductionId) {
+                const deduction = await tx.deductions.findUnique({
+                    where: { id: data.deductionId }
+                });
+                if (!deduction) {
+                    fail("Deduction not found", "deductionId");
+                    throw new Joi.ValidationError(validation, stack);
+                }
+            }
+
+            // 🚫 Cek duplicate (userId + deductionId + type)
+            if (data.type || data.deductionId || data.userId) {
+                const duplicate = await tx.employeeDeductions.findFirst({
+                    where: {
+                        userId: data.userId ?? current.userId,
+                        deductionId: data.deductionId ?? current.deductionId,
+                        type: data.type ?? current.type,
+                        id: { not: id }
+                    }
+                });
+
+                if (duplicate) {
+                    fail("This deduction with the same type already exists for this employee", "duplicate");
+                    throw new Joi.ValidationError(validation, stack);
+                }
+            }
 
             const updated = await tx.employeeDeductions.update({
                 where: { id },
                 data
             });
+
             return updated;
         });
     }
+
 
     async remove(id) {
         return this.prisma.$transaction(async (tx) => {
