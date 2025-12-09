@@ -4,7 +4,7 @@ import employeeDeductionsService from "./employeeDeductions-service.js";
 class EmployeedeductionsController {
 
     async create(req, res) {
-        const result = await employeeDeductionsService.create(req.body);
+        const result = await employeeDeductionsService.create(req.user, req.body);
         return createdResponse(res, result);
     }
 
@@ -27,7 +27,7 @@ class EmployeedeductionsController {
 
     async update(req, res) {
         const result = await employeeDeductionsService.update(
-            req.employeeDeductions,
+            req.user,
             req.params.id,
             req.body
         );

@@ -31,7 +31,7 @@ class AuthService {
 
 		// 🔹 Panggil mailer dengan fromName dan from
 		await this.mailer.sendMail({
-			fromName: "Support App",                 // Nama pengirim
+			fromName: "CompuPay App",                 // Nama pengirim
 			from: process.env.MAILER_FROM,          // Email pengirim
 			to: email,                               // Email penerima
 			subject: "Reset Password OTP",
@@ -77,7 +77,6 @@ class AuthService {
 
 		const email = payload.email;
 
-		// Update password
 		const hashed = await hashPassword(new_password);
 		await this.prisma.user.update({
 			where: { email },
@@ -105,6 +104,9 @@ class AuthService {
 			where: {
 				email: email,
 			},
+			include: {
+				position: true,
+			},
 		});
 
 		if (!user) {
@@ -120,11 +122,11 @@ class AuthService {
 		delete user.password;
 
 		const accessToken = generateToken(
-			{ id: user.id, role: user.role, type: "access" },
+			{ id: user.id, role: user.role, position: user.position.name, type: "access" },
 			"1d",
 		);
 		const refreshToken = generateToken(
-			{ id: user.id, role: user.role, type: "refresh" },
+			{ id: user.id, role: user.role, position: user.position.name, type: "refresh" },
 			"1d",
 		);
 

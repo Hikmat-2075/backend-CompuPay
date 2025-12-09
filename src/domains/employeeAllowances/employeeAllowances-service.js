@@ -9,13 +9,18 @@ class EmployeeAllowancesService {
         this.prisma = new PrismaService();
     }
 
-    async create(data) {
+    async create(currentUser, data) {
         let validation = "";
         const stack = [];
         const fail = (msg, path) => {
             validation += (validation ? " " : "") + msg;
             stack.push({ message: msg, path: [path] });
         };
+
+        if (currentUser.role !== "ADMIN") {
+            fail("Forbidden, only ADMIN is allowed to create Employee Allowance", "role");
+            throw new Joi.ValidationError(validation, stack);
+        }
 
         return this.prisma.$transaction(async (tx) => {
 
@@ -100,8 +105,22 @@ class EmployeeAllowancesService {
     }
 
 
-    async update(id, data) {
+    async update(currentUser, id, data) {
+        let validation = "";
+        const stack = [];
+        const fail = (msg, path) => {
+            validation += (validation ? " " : "") + msg;
+            stack.push({ message: msg, path: [path] });
+        };
+
+        // Authorization
+        if (currentUser.role !== "ADMIN") {
+            fail("Forbidden, only ADMIN is allowed to update Employee Allowance", "role");
+            throw new Joi.ValidationError(validation, stack);
+        }
+
         return this.prisma.$transaction(async (tx) => {
+            // Check existing record
             const current = await tx.employeeAllowances.findUnique({
                 where: { id }
             });
@@ -110,14 +129,45 @@ class EmployeeAllowancesService {
                 throw BaseError.notFound("Employee Allowance not found");
             }
 
+            // Validate userId if included
+            if (data.userId && data.userId !== current.userId) {
+                const userExist = await tx.user.findUnique({ where: { id: data.userId } });
+                if (!userExist) {
+                    fail("User not found", "userId");
+                    throw new Joi.ValidationError(validation, stack);
+                }
+            }
+
+            // Validate allowanceId if included
+            if (data.allowanceId && data.allowanceId !== current.allowanceId) {
+                const allowanceExist = await tx.allowances.findUnique({ where: { id: data.allowanceId } });
+                if (!allowanceExist) {
+                    fail("Allowance not found", "allowanceId");
+                    throw new Joi.ValidationError(validation, stack);
+                }
+            }
+
+            // Validate amount if included
+            if (data.amount !== undefined && (isNaN(data.amount) || data.amount < 0)) {
+                fail("Amount must be a valid positive number", "amount");
+                throw new Joi.ValidationError(validation, stack);
+            }
+
+            // Validate effective_date if included
+            if (data.effective_date && isNaN(Date.parse(data.effective_date))) {
+                fail("Invalid effective date format", "effective_date");
+                throw new Joi.ValidationError(validation, stack);
+            }
+
             const updated = await tx.employeeAllowances.update({
                 where: { id },
-                data
+                data,
             });
 
             return updated;
         });
     }
+
 
 
     async remove(id) {

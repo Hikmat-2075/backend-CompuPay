@@ -21,7 +21,7 @@ class EmployeeService {
 
         return this.prisma.$transaction(async (tx) => {
             // Cek employee_number duplicate
-            const employeeNumberExist = await tx.employee.findFirst({
+            const employeeNumberExist = await tx.user.findFirst({
                 where: { employee_number: data.employee_number },
             });
 
@@ -31,7 +31,7 @@ class EmployeeService {
             }
 
             // Cek email duplicate
-            const emailExist = await tx.employee.findFirst({
+            const emailExist = await tx.user.findFirst({
                 where: { email: data.email },
             });
 
@@ -60,8 +60,11 @@ class EmployeeService {
                 throw new Joi.ValidationError(validation, stack);
             }
 
-            const created = await tx.employee.create({
-                data,
+            const created = await tx.user.create({
+                data: {
+                    ...data,
+                    role: "USER",
+                },
             });
 
             if (!created) throw new Error("Failed to create Employee");
@@ -71,7 +74,7 @@ class EmployeeService {
     }
 
     async detail(id) {
-        const employee = await this.prisma.employee.findUnique({
+        const employee = await this.prisma.user.findUnique({
             where: { id },
             include: employeeQueryConfig.relations,
         });
@@ -87,8 +90,8 @@ class EmployeeService {
         options.include = employeeQueryConfig.relations;
 
         const [data, count] = await Promise.all([
-            this.prisma.employee.findMany(options),
-            this.prisma.employee.count({ where: options.where }),
+            this.prisma.user.findMany(options),
+            this.prisma.user.count({ where: options.where }),
         ]);
 
         const page = query?.pagination?.page ?? 1;
@@ -109,9 +112,9 @@ class EmployeeService {
         };
     }
 
-    async update(currentUser, id, data, file) {
+    async update(id, data, file) {
         return this.prisma.$transaction(async (tx) => {
-            const current = await tx.employee.findUnique({ where: { id } });
+            const current = await tx.user.findUnique({ where: { id } });
             if (!current) throw BaseError.notFound("Employee not found");
 
             let validation = "";
@@ -123,7 +126,7 @@ class EmployeeService {
 
             // Cek duplicate employee_number
             if (data.employee_number) {
-                const exist = await tx.employee.findFirst({
+                const exist = await tx.user.findFirst({
                     where: { employee_number: data.employee_number, NOT: { id } }
                 });
                 if (exist) {
@@ -134,7 +137,7 @@ class EmployeeService {
 
             // Cek duplicate email
             if (data.email) {
-                const emailExist = await tx.employee.findFirst({
+                const emailExist = await tx.user.findFirst({
                     where: { email: data.email, NOT: { id } }
                 });
                 if (emailExist) {
@@ -161,7 +164,6 @@ class EmployeeService {
                 }
             }
 
-            // 🔥 Handle upload profile image
             if (file) {
                 const uploadsDir = path.join(process.cwd(), "public/assets/images");
                 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
@@ -182,7 +184,7 @@ class EmployeeService {
                 data.profile_uri = `assets/images/${filename}`;
             }
 
-            const updated = await tx.employee.update({
+            const updated = await tx.user.update({
             where: { id },
             data
             });
@@ -192,7 +194,7 @@ class EmployeeService {
     }
 
     async remove(id) {
-        const deleted = await this.prisma.employee.delete({
+        const deleted = await this.prisma.user.delete({
             where: { id },
         });
 

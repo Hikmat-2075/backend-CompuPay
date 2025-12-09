@@ -2,7 +2,7 @@ import { createdResponse, successResponse } from "../../utils/response.js";
 import deductionsService from "./deductions-service.js"
 class DeductionsController {
     async create(req, res) {
-        const result = await deductionsService.create(req.body);
+        const result = await deductionsService.create(req.user, req.body);
         return createdResponse(res, result);
     }
 
@@ -25,7 +25,7 @@ class DeductionsController {
 
     async update(req, res) {
         const result = await deductionsService.update(
-            req.deductions,
+            req.user,
             req.params.id,
             req.body
         );
