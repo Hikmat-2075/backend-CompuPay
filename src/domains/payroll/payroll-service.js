@@ -17,8 +17,8 @@ class PayrollService {
             stack.push({ message: msg, path: [path] });
         };
 
-        if (currentUser.role !== "ADMIN") {
-            fail("Forbidden, only ADMIN is allowed to create Payroll", "role");
+        if (currentUser.position.name !== "HR") {
+            fail("Forbidden, only HRnpm run dev is allowed to create Payroll", "role");
             throw new Joi.ValidationError(validation, stack);
         }
 
@@ -80,11 +80,11 @@ class PayrollService {
             data,
             meta: hasPagination
                 ? {
-                      totalItems: count,
-                      totalPages,
-                      currentpage: Number(page),
-                      itemsPerPage: Number(limit)
-                  }
+                    totalItems: count,
+                    totalPages,
+                    currentpage: Number(page),
+                    itemsPerPage: Number(limit)
+                }
                 : null
         };
     }
@@ -101,8 +101,8 @@ class PayrollService {
                 stack.push({ message: msg, path: [path] });
             };
 
-            if (currentUser.role !== "ADMIN") {
-                fail("Forbidden, only ADMIN is allowed to update Payroll", "role");
+            if (currentUser.position.name !== "HR") {
+                fail("Forbidden, only HR is allowed to update Payroll", "role");
                 throw new Joi.ValidationError(validation, stack);
             }
 
