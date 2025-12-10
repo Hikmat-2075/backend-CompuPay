@@ -130,7 +130,7 @@ class AuthService {
 			"1d",
 		);
 
-		return { access_token: accessToken, refresh_token: refreshToken, role: user.role};
+		return { access_token: accessToken, refresh_token: refreshToken, role: user.role, position: user.position.name};
 	}
 
 	async register(data) {
