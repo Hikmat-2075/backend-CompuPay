@@ -108,19 +108,8 @@ model Position {
 
   department   Department @relation(fields: [departmentId], references: [id])
   users    User[]
-  levels      PositionLevel[]
 
   @@map("Position")
-}
-
-model PositionLevel {
-  id            String    @id @default(uuid())
-  positionId    String
-  name          String
-
-  position    Position    @relation(fields: [positionId], references: [id])
-
-  @@map("Position_level")
 }
 
 
