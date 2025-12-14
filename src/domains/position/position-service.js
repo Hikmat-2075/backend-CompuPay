@@ -41,14 +41,9 @@ class PositionService {
                 throw new Joi.ValidationError(validation, stack);
             }
 
-            const { levels = [], ...positionData } = data;
-
             const created = await tx.position.create({
                 data: {
-                    ...positionData,
-                    levels: {
-                        create: levels.map((lv) => ({ name: lv.name }))
-                    }
+                    ...data,
                 },
                 include: positionQueryConfig.relations
             });
@@ -65,7 +60,6 @@ class PositionService {
                 _count: {
                     select: { employees: true },
                 },
-                levels: true,
             },
         });
 
@@ -84,7 +78,6 @@ class PositionService {
             ...options.include,
             department: true,
             _count: { select: { employees: true } },
-            levels: true,
         };
 
         const [data, count] = await Promise.all([
@@ -147,26 +140,10 @@ class PositionService {
                 }
             }
 
-            const { levels, ...positionData } = data;
-
             const updated = await tx.position.update({
                 where: { id },
-                data: positionData,
+                data,
             });
-
-            // jika user submit levels baru, replace semuanya
-            if (Array.isArray(levels)) {
-                await tx.positionLevel.deleteMany({ where: { positionId: id } });
-
-                if (levels.length > 0) {
-                    await tx.positionLevel.createMany({
-                        data: levels.map(lv => ({
-                            positionId: id,
-                            name: lv.name
-                        }))
-                    });
-                }
-            }
 
             return this.detail(id);
         });
@@ -175,34 +152,31 @@ class PositionService {
     async remove(id) {
         return this.prisma.$transaction(async (tx) => {
             const current = await tx.position.findUnique({
-            where: { id }
+                where: { id }
             });
 
             if (!current) {
-            throw BaseError.notFound("Position not found");
+                throw BaseError.notFound("Position not found");
             }
 
             // Cek apakah posisi sedang digunakan oleh employee
             const employeeCount = await tx.employee.count({
-            where: { positionId: id }
+                where: { positionId: id }   
             });
 
             if (employeeCount > 0) {
-            throw BaseError.badRequest(
-                "Cannot delete position because it is still assigned to employees"
-            );
+                throw BaseError.badRequest(
+                    "Cannot delete position because it is still assigned to employees"
+                );
             }
-
-            // Hapus dulu level jabatan
-            await tx.positionLevel.deleteMany({ where: { positionId: id } });
 
             // Baru hapus position
             const deleted = await tx.position.delete({
-            where: { id }
+                where: { id }
             });
 
             return {
-            message: "Position deleted successfully",
+                message: "Position deleted successfully",
             // data: deleted
             };
         });
