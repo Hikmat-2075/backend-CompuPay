@@ -25,7 +25,7 @@ class EmployeeAllowancesService {
         return this.prisma.$transaction(async (tx) => {
 
             // Check employee exists
-            const employee = await tx.employee.findUnique({
+            const employee = await tx.user.findUnique({
                 where: { id: data.employeeId }
             });
             if (!employee) {
@@ -46,7 +46,7 @@ class EmployeeAllowancesService {
             // Prevent duplicate allowance type at same effective date
             const duplicate = await tx.employeeAllowances.findFirst({
                 where: {
-                    employeeId: data.employeeId,
+                    userId: data.userId,
                     allowanceId: data.allowanceId,
                     effective_date: data.effective_date
                 }

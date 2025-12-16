@@ -13,7 +13,7 @@ const positionQueryConfig = {
 
     relations: {
         department: true,
-        employees: true,
+        user: true,
     },
 
     dateFields: {

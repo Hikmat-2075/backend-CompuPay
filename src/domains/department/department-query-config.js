@@ -9,7 +9,7 @@ const departmentQueryConfig = {
     ],
 
     relations: {
-        employees: true,
+        user: true,
         positions: true
     },
 

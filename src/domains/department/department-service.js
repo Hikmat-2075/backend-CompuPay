@@ -128,7 +128,7 @@ async remove(id) {
             throw BaseError.notFound("Department not found");
         }
         // cek apakah department dipakai employee
-        const employeeCount = await tx.employee.count({
+        const employeeCount = await tx.user.count({
             where: { departmentId: id }
         });
 
