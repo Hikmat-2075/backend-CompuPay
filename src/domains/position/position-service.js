@@ -160,7 +160,7 @@ class PositionService {
             }
 
             // Cek apakah posisi sedang digunakan oleh employee
-            const employeeCount = await tx.employee.count({
+            const employeeCount = await tx.user.count({
                 where: { positionId: id }   
             });
 
