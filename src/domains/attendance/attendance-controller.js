@@ -25,7 +25,7 @@ class AttendanceController {
     return successResponse(res, result);
     }
 
-    async update() {
+    async update(req, res) {
         const result = await attendanceService.update(
             req.attendances,
             req.params.id,
