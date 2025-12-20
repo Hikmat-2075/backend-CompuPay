@@ -100,10 +100,6 @@ const userUpdateSchema = Joi.object({
     position_id: Joi.string().uuid().optional(),
     salary: Joi.number().integer().positive().optional(),
     status: Joi.string().valid("ACTIVE", "INACTIVE").optional()
-})
-.min(1)
-.messages({
-    "object.min": "At least one field must be provided for update"
 });
 
 

@@ -30,10 +30,12 @@ class UserController {
             req.user,
             req.params.id,
             req.body,
-            req.file,
+            req.file
         );
+
         return successResponse(res, result);
     }
+
 
     async remove(req, res) {
         const result = await userService.remove(req.params.id);

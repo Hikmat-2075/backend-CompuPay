@@ -16,7 +16,7 @@ class DeductionsService {
             stack.push({message: msg, path: [path]});
         };
 
-        if (currentUser.role !== "ADMIN") {
+        if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
             fail("Forbidden, only ADMIN is allowed to create Deduction", "role");
             throw new Joi.ValidationError(validation, stack);
         }
@@ -95,7 +95,7 @@ class DeductionsService {
                 stack.push({ message, path: [path] });
             };
 
-            if (currentUser.role !== "ADMIN") {
+            if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
                 fail("Forbidden, only ADMIN is allowed to update Deduction", "role");
                 throw new Joi.ValidationError(validation, stack);
             }

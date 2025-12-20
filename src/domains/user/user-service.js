@@ -5,6 +5,7 @@ import userQueryConfig from "./user-query-config.js";
 import Joi from "joi";
 import path from "path";
 import fs from "fs";
+import { truncate } from "fs/promises";
 
 class UserService {
   constructor() {
@@ -12,7 +13,6 @@ class UserService {
   }
 
   async create(currentUser, data, file) {
-    console.log(currentUser);
     if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
       throw BaseError.forbidden(
         "You do not have permission to create an admin"
@@ -48,7 +48,7 @@ class UserService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      // Cek email sudah dipakai atau belum
+      // 1️⃣ cek email
       const emailExist = await tx.user.findFirst({
         where: { email: data.email },
       });
@@ -58,16 +58,39 @@ class UserService {
         throw new Joi.ValidationError(validation, stack);
       }
 
+      // 2️⃣ cek department exists
+      const department = await tx.department.findUnique({
+        where: { id: data.department_id },
+      });
+
+      if (!department) {
+        fail("Department not found", "department_id");
+        throw new Joi.ValidationError(validation, stack);
+      }
+
+      // 3️⃣ cek position exists & milik department tersebut
+      const position = await tx.position.findFirst({
+        where: {
+          id: data.position_id,
+          department_id: data.department_id,
+        },
+      });
+
+      if (!position) {
+        fail(
+          "Position does not belong to the selected department",
+          "position_id"
+        );
+        throw new Joi.ValidationError(validation, stack);
+      }
+
+      // 4️⃣ create user
       const created = await tx.user.create({
         data: {
           ...data,
           salary: Number(data.salary),
         },
       });
-
-      if (!created) {
-        throw new Error("Failed to create user");
-      }
 
       return created;
     });
@@ -76,6 +99,10 @@ class UserService {
   async detail(id) {
     const user = await this.prisma.user.findUnique({
       where: { id },
+      include: {
+        department: true,
+        position: true,
+      },
     });
     if (!user) {
       throw BaseError.notFound("User not found");
@@ -85,6 +112,12 @@ class UserService {
 
   async list({ query } = {}) {
     const options = buildQueryOptions(userQueryConfig, query);
+
+    options.include = {
+      ...options.include,
+      department: true,
+      position: true,
+    };
 
     const [data] = await Promise.all([
       this.prisma.user.findMany(options),
@@ -110,6 +143,11 @@ class UserService {
   }
 
   async update(currentUser, id, data, file) {
+    if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
+      throw BaseError.forbidden(
+        "You do not have permission to create an admin"
+      );
+    }
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.user.findUnique({ where: { id } });
       if (!current) throw BaseError.notFound("User not found");

@@ -17,7 +17,7 @@ class EmployeeAllowancesService {
             stack.push({ message: msg, path: [path] });
         };
 
-        if (currentUser.role !== "ADMIN") {
+        if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
             fail("Forbidden, only ADMIN is allowed to create Employee Allowance", "role");
             throw new Joi.ValidationError(validation, stack);
         }
@@ -114,7 +114,7 @@ class EmployeeAllowancesService {
         };
 
         // Authorization
-        if (currentUser.role !== "ADMIN") {
+        if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
             fail("Forbidden, only ADMIN is allowed to update Employee Allowance", "role");
             throw new Joi.ValidationError(validation, stack);
         }

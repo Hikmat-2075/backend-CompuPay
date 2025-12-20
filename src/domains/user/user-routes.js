@@ -27,8 +27,9 @@ class UserRoutes extends BaseRoutes {
             tryCatch(UserController.create),
         ]);
         this.router.put("/:id", [
-            validateCredentials(userUpdateSchema),
             authTokenMiddleware.authenticate,
+            uploadFile("image").single("profile_uri"),
+            validateCredentials(userUpdateSchema),
             tryCatch(UserController.update),
         ]);
         this.router.delete("/:id", [

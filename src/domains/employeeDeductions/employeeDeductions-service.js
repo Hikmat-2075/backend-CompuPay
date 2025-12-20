@@ -17,7 +17,7 @@ class EmployeeDeductionsService {
             stack.push({ message: msg, path: [path] });
         };
 
-        if (currentUser.role !== "ADMIN") {
+        if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
             fail("Forbidden, only ADMIN is allowed to create Employee Deduction", "role");
             throw new Joi.ValidationError(validation, stack);
         }
@@ -112,7 +112,7 @@ class EmployeeDeductionsService {
         };
 
         // Role restriction
-        if (currentUser.role !== "ADMIN") {
+        if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
             fail("Forbidden, only ADMIN is allowed to update Employee Deduction", "role");
             throw new Joi.ValidationError(validation, stack);
         }

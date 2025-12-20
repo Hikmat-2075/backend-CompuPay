@@ -18,7 +18,7 @@ class DepartmentService {
             stack.push({ message: msg, path: [path] });
         };
 
-        if (currentUser.role !== "ADMIN") {
+        if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
             fail("Forbidden, only ADMIN is allowed to create Department", "role");
             throw new Joi.ValidationError(validation, stack);
         }
@@ -91,7 +91,7 @@ class DepartmentService {
                 stack.push({ message, path: [path] });
             };
 
-            if (currentUser.role !== "ADMIN") {
+            if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
                 fail("Forbidden, only ADMIN is allowed to update Department", "role");
                 throw new Joi.ValidationError(validation, stack);
             }
