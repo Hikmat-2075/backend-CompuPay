@@ -20,13 +20,13 @@ async function main() {
     console.log("➕ Department created");
   }
 
-  // 2. Seed Position (wajib reference departmentId)
+  // 2. Seed Position (wajib reference department_id)
   let position = await prisma.position.findFirst();
   if (!position) {
     position = await prisma.position.create({
       data: {
         name: "System Administrator",
-        departmentId: department.id
+        department_id: department.id
       },
     });
     console.log("➕ Position created");
@@ -43,14 +43,13 @@ async function main() {
     await prisma.user.create({
       data: {
         employee_number: "EMP-0001",
-        first_name: "Super",
-        last_name:  "Admin",
+        full_name: "Super Admin",
         email: "hikmatngrha@gmail.com",
         password: hashedPassword,
-        role: "ADMIN",
+        role: "SUPER_ADMIN",
         join_date: new Date(),
-        departmentId: department.id,
-        positionId: position.id,
+        department_id: department.id,
+        position_id: position.id,
         salary: 20000000, // bisa disesuaikan bebas
       },
     });

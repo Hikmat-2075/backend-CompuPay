@@ -1,16 +1,19 @@
 import Joi from "joi";
 
 const userCreateSchema = Joi.object({
-    first_name: Joi.string().required().messages({
-        "string.empty": "First name is required."
+    employee_number: Joi.string().required().messages({
+        "string.empty": "Employee Number is required."
     }),
-    last_name: Joi.string().required().messages({
-        "string.empty": "Last name is required."
+
+    full_name: Joi.string().required().messages({
+        "string.empty": "Full name is required."
     }),
+
     email: Joi.string().email().required().messages({
         "string.empty": "Email is required.",
         "string.email": "Email must be a valid email address."
     }),
+
     password: Joi.string()
         .min(8)
         .pattern(/^(?=.*[A-Z])(?=.*[^a-zA-Z0-9]).{8,}$/)
@@ -18,38 +21,90 @@ const userCreateSchema = Joi.object({
         .messages({
             "string.empty": "Password is required.",
             "string.min": "Password must be at least 8 characters long.",
-            "string.pattern.base": "Password must be at least 8 characters long, contain 1 uppercase letter, and 1 special character."
-    }),
-    profile_uri: Joi.string().uri().optional().allow(null, ''),
+            "string.pattern.base":
+                "Password must contain 1 uppercase letter and 1 special character."
+        }),
+
+    profile_uri: Joi.string().uri().optional().allow(null, ""),
 
     role: Joi.string()
-        .valid("ADMIN", "EMPLOYEE", "SUPER_ADMIN")
-        .default("ADMIN"),
+        .valid("USER", "ADMIN", "SUPER_ADMIN")
+        .default("USER"), // ✅ sesuai Prisma
+
+    join_date: Joi.date()
+        .required()
+        .messages({
+            "any.required": "Join date is required.",
+            "date.base": "Join date must be a valid date."
+        }),
+
+    department_id: Joi.string()
+        .uuid()
+        .required()
+        .messages({
+            "any.required": "Department is required.",
+            "string.empty": "Department is required.",
+            "string.guid": "Department ID must be a valid UUID."
+        }),
+
+    position_id: Joi.string()
+        .uuid()
+        .required()
+        .messages({
+            "any.required": "Position is required.",
+            "string.empty": "Position is required.",
+            "string.guid": "Position ID must be a valid UUID."
+        }),
+
+    salary: Joi.number()
+        .integer()
+        .positive()
+        .required()
+        .messages({
+            "any.required": "Salary is required.",
+            "number.base": "Salary must be a number.",
+            "number.integer": "Salary must be an integer.",
+            "number.positive": "Salary must be greater than 0."
+        }),
+    status: Joi.string().required().messages({
+        "string.empty": "status is required.",
+    }),
+
 });
 
+
 const userUpdateSchema = Joi.object({
-    first_name: Joi.string().optional(),
-    last_name: Joi.string().optional(),
+    full_name: Joi.string().optional(),
+
     email: Joi.string().email().messages({
         "string.email": "Email must be a valid email address."
     }),
+
     password: Joi.string()
-    .min(8)
-    .pattern(/^(?=.*[A-Z])(?=.*[^a-zA-Z0-9]).{8,}$/)
-    .messages({
-        "string.min": "Password must be at least 8 characters long.",
-        "string.pattern.base":
-        "Password must contain 1 uppercase letter and 1 special character."
-    })
-    .optional(),
-    profile_uri: Joi.string().uri().optional().allow(null, ''),
+        .min(8)
+        .pattern(/^(?=.*[A-Z])(?=.*[^a-zA-Z0-9]).{8,}$/)
+        .messages({
+            "string.min": "Password must be at least 8 characters long.",
+            "string.pattern.base":
+                "Password must contain 1 uppercase letter and 1 special character."
+        })
+        .optional(),
+
+    profile_uri: Joi.string().uri().optional().allow(null, ""),
+
     role: Joi.string()
-    .valid("SUPER_ADMIN", "ADMIN", "EMPLOYEE")
-    .optional(),
+        .valid("USER", "ADMIN", "SUPER_ADMIN")
+        .optional(),
+
+    department_id: Joi.string().uuid().optional(),
+    position_id: Joi.string().uuid().optional(),
+    salary: Joi.number().integer().positive().optional(),
+    status: Joi.string().valid("ACTIVE", "INACTIVE").optional()
 })
 .min(1)
 .messages({
     "object.min": "At least one field must be provided for update"
 });
+
 
 export { userCreateSchema, userUpdateSchema };

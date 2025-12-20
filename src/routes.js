@@ -5,7 +5,6 @@ import departmentRoutes from "./domains/department/department-routes.js"
 import positionRoutes from "./domains/position/position-routes.js";
 import deductionsRoutes from "./domains/deductions/deductions-routes.js";
 import attendanceRoutes from "./domains/attendance/attendance-routes.js";
-import employeeRoutes from "./domains/employee/employee-routes.js";
 import payrollRoutes from "./domains/payroll/payroll-routes.js";
 import employeeAllowancesRoutes from "./domains/employeeAllowances/employeeAllowances-routes.js";
 import AllowancesRoutes from "./domains/allowances/allowances-routes.js"
@@ -38,10 +37,6 @@ const appsRoutes = [
 	{
 		path: "/attendance",
 		route: attendanceRoutes,
-	},
-	{
-		path: "/employee",
-		route: employeeRoutes,
 	},
 	{
 		path: "/payroll",

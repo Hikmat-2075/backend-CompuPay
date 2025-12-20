@@ -8,6 +8,7 @@ import {
     userUpdateSchema,
 } from "./user-schema.js";
 import authTokenMiddleware from "../../middlewares/auth-token-middleware.js";
+import uploadFile from "../../middlewares/upload-file-middleware.js";
 
 class UserRoutes extends BaseRoutes {
     routes() {
@@ -20,8 +21,9 @@ class UserRoutes extends BaseRoutes {
             tryCatch(UserController.detail),
         ]);
         this.router.post("/", [
-            validateCredentials(userCreateSchema),
             authTokenMiddleware.authenticate,
+            uploadFile("image").single("profile_uri"),
+            validateCredentials(userCreateSchema),
             tryCatch(UserController.create),
         ]);
         this.router.put("/:id", [

@@ -1,19 +1,19 @@
 const userQueryConfig = {
     searchableFields: [
-        "first_name",
-        "last_name",
+        "full_name",
         "email",
-        "role",
     ],
     filterableFields: ["role"],
     orderableFields: [
         "id",
-        "first_name",
-        "last_name",
+        "full_name",
         "email",
         "created_at",
         "updated_at",],
-    relations: {},
+    relations: {
+        department: true,
+        position: true,
+    },
     dateFields: { 
         created_at: "created_at",
         updated_at: "updated_at"

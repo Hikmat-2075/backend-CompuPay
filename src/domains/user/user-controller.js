@@ -4,7 +4,7 @@ import userService from "./user-service.js";
 class UserController {
 
     async create(req, res) {
-        const result = await userService.create(req.body);
+        const result = await userService.create(req.user, req.body, req.file);
         return createdResponse(res, result);
     }
 
@@ -29,7 +29,8 @@ class UserController {
         const result = await userService.update(
             req.user,
             req.params.id,
-            req.body
+            req.body,
+            req.file,
         );
         return successResponse(res, result);
     }

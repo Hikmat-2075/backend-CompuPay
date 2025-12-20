@@ -47,6 +47,7 @@ enum TypeAllowance {
 enum Role {
   USER
   ADMIN
+  SUPER_ADMIN
 }
 
 model Otp {
@@ -59,22 +60,21 @@ model Otp {
 model User {
   id               String               @id @default(uuid())
   employee_number  String               @unique
-  first_name       String
-  last_name        String
+  full_name        String 
   email            String               @unique
   password         String
   profile_uri      String?
-  role             Role
+  role             Role                 @default(USER)
   status           Status               @default(ACTIVE)
   join_date        DateTime
-  departmentId     String
-  positionId       String
+  department_id     String
+  position_id       String
   salary           Int
   created_at       DateTime             @default(now())
   updated_at       DateTime             @updatedAt
 
-  department       Department           @relation(fields: [departmentId], references: [id])
-  position         Position             @relation(fields: [positionId], references: [id])
+  department       Department           @relation(fields: [department_id], references: [id])
+  position         Position             @relation(fields: [position_id], references: [id])
 
   employeeAllowances  EmployeeAllowances[]
   employeeDeductions  EmployeeDeductions[]
@@ -102,11 +102,11 @@ model Department {
 model Position {
   id           String     @id @default(uuid())
   name         String      
-  departmentId String
+  department_id String
   created_at   DateTime   @default(now())
   updated_at   DateTime   @updatedAt
 
-  department   Department @relation(fields: [departmentId], references: [id])
+  department   Department @relation(fields: [department_id], references: [id])
   users    User[]
 
   @@map("Position")
@@ -129,16 +129,16 @@ model Allowances {
 
 model EmployeeAllowances {
   id             String    @id @default(uuid())
-  userId     String
-  allowanceId    String
+  user_id     String
+  allowance_id    String
   type           TypeAllowance
   amount         Int
   effective_date DateTime
   created_at     DateTime  @default(now())
   updated_at     DateTime  @updatedAt
 
-  users   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  allowance  Allowances @relation(fields: [allowanceId], references: [id])
+  users   User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  allowance  Allowances @relation(fields: [allowance_id], references: [id])
 
   @@map("Employee_Allowances")
 }
@@ -158,16 +158,16 @@ model Deductions {
 
 model EmployeeDeductions {
   id             String    @id @default(uuid())
-  userId     String
-  deductionId    String
+  user_id     String
+  deduction_id    String
   type           TypeDeduction
   amount         Int
   effective_date DateTime
   created_at     DateTime  @default(now())
   updated_at     DateTime  @updatedAt
 
-  users  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deduction Deductions @relation(fields: [deductionId], references: [id])
+  users  User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  deduction Deductions @relation(fields: [deduction_id], references: [id])
 
   @@map("Employee_Deductions")
 }
@@ -175,13 +175,13 @@ model EmployeeDeductions {
 // Kehadiran
 model Attendance {
   id           String   @id @default(uuid())
-  userId   String
+  user_id   String
   log_type     LogType
   datetime_log DateTime
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
 
-  users User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  users User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("Attendance")
 }
@@ -190,7 +190,7 @@ model Attendance {
 model Payroll {
   id               String        @id @default(uuid())
   ref_no           String        @unique
-  employeeId       String
+  user_id       String
   date_from        DateTime
   date_to          DateTime
   type             TypePayroll
@@ -205,10 +205,10 @@ model Payroll {
   created_at       DateTime      @default(now())
   updated_at       DateTime      @updatedAt
 
-  employee User @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("Payroll")
 
-  @@index([employeeId])
+  @@index([user_id])
 }
 
