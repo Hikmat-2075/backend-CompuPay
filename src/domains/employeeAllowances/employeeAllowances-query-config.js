@@ -18,7 +18,7 @@ const employeeAllowancesQueryConfig = {
     ],
 
     relations: {
-        employee: true,
+        users: true,
         allowance: true
     },
 

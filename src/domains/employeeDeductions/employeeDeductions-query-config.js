@@ -23,7 +23,7 @@ const employeeDeductionsQueryConfig = {
 
     // Relasi yang boleh di-include
     relations: {
-        employee: true,
+        users: true,
         deduction: true
     },
 

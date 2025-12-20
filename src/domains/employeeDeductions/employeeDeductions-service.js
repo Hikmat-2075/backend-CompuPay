@@ -25,7 +25,7 @@ class EmployeeDeductionsService {
         return this.prisma.$transaction(async (tx) => {
 
             // Cek employee
-            const employee = await tx.employee.findUnique({
+            const employee = await tx.user.findUnique({
                 where: { id: data.employeeId }
             });
             if (!employee) {

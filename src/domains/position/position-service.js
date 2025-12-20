@@ -58,7 +58,7 @@ class PositionService {
             include: {
                 department: true,
                 _count: {
-                    select: { employees: true },
+                    select: { users: true },
                 },
             },
         });
@@ -77,7 +77,7 @@ class PositionService {
         options.include = {
             ...options.include,
             department: true,
-            _count: { select: { employees: true } },
+            _count: { select: { users: true } },
         };
 
         const [data, count] = await Promise.all([
@@ -91,7 +91,7 @@ class PositionService {
         const totalPages = hasPagination ? Math.ceil(count / limit) : 1;
         const mappedData = data.map((item) => ({
             ...item,
-            totalEmployees: item._count.employee,
+            totalEmployees: item._count.user,
         }));
 
         return {
