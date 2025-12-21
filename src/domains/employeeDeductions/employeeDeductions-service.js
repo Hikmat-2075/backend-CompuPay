@@ -194,15 +194,15 @@ class EmployeeDeductionsService {
       }
 
       // Cek apakah sudah dipakai di payroll item (jika ada relasi)
-      const inUse = await tx.payrollItem.findFirst({
-        where: { deduction_id: id }, // sesuaikan field jika berbeda
-      });
+      // const inUse = await tx.payroll.findFirst({
+      //   where: { deduction_id: id }, // sesuaikan field jika berbeda
+      // });
 
-      if (inUse) {
-        throw BaseError.badRequest(
-          "This deduction cannot be deleted because it is already used in payroll."
-        );
-      }
+      // if (inUse) {
+      //   throw BaseError.badRequest(
+      //     "This deduction cannot be deleted because it is already used in payroll."
+      //   );
+      // }
 
       const deleted = await tx.employeeDeductions.delete({
         where: { id },

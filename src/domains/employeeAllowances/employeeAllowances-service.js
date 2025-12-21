@@ -192,15 +192,15 @@ class EmployeeAllowancesService {
       }
 
       // Cek apakah dipakai di payroll item (jika ada relasi)
-      const inUse = await tx.payrollItem.findFirst({
-        where: { allowance_id: id }, // sesuaikan jika field berbeda
-      });
+      // const inUse = await tx.payroll.findFirst({
+      //   where: { allowance_id: id }, // sesuaikan jika field berbeda
+      // });
 
-      if (inUse) {
-        throw BaseError.badRequest(
-          "This allowance cannot be deleted because it is already used in payroll."
-        );
-      }
+      // if (inUse) {
+      //   throw BaseError.badRequest(
+      //     "This allowance cannot be deleted because it is already used in payroll."
+      //   );
+      // }
 
       // Hapus
       const deleted = await tx.employeeAllowances.delete({

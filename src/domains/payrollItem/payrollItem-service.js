@@ -1,7 +1,7 @@
 import BaseError from "../../base_classes/base-error.js";
 import { PrismaService } from "../../common/services/prisma.service.js";
 import { buildQueryOptions } from "../../utils/buildQueryOptions.js";
-import payrollItemQueryConfig from "./payrollItem-query-config.js";
+import payrollItemQueryConfig from "./payroll-query-config.js";
 import Joi from "joi";
 
 class PayrollItemService {
@@ -37,7 +37,7 @@ class PayrollItemService {
       }
 
       // Check duplicate payroll item
-      const duplicate = await tx.payrollItem.findFirst({
+      const duplicate = await tx.payroll.findFirst({
         where: { payroll_id: data.payroll_id, user_id: data.user_id },
       });
       if (duplicate) {
@@ -61,7 +61,7 @@ class PayrollItemService {
 
       const net = salary + allowance - deductions;
 
-      const created = await tx.payrollItem.create({
+      const created = await tx.payroll.create({
         data: {
           payroll_id: data.payroll_id,
           user_id: data.user_id,
@@ -80,24 +80,24 @@ class PayrollItemService {
   }
 
   async detail(id) {
-    const payrollItem = await this.prisma.payrollItem.findUnique({
+    const payroll = await this.prisma.payroll.findUnique({
       where: { id },
       include: payrollItemQueryConfig.relations,
     });
 
-    if (!payrollItem) {
+    if (!payroll) {
       throw BaseError.notFound("Payroll Item not found");
     }
 
-    return payrollItem;
+    return payroll;
   }
 
   async list({ query } = {}) {
     const options = buildQueryOptions(payrollItemQueryConfig, query);
     options.include = payrollItemQueryConfig.relations;
     const [data, count] = await Promise.all([
-      this.prisma.payrollItem.findMany(options),
-      this.prisma.payrollItem.count({ where: options.where }),
+      this.prisma.payroll.findMany(options),
+      this.prisma.payroll.count({ where: options.where }),
     ]);
 
     const page = query?.pagination?.page ?? 1;
@@ -120,7 +120,7 @@ class PayrollItemService {
 
   async update(id, data) {
     return this.prisma.$transaction(async (tx) => {
-      const current = await tx.payrollItem.findUnique({
+      const current = await tx.payroll.findUnique({
         where: { id },
       });
 
@@ -128,7 +128,7 @@ class PayrollItemService {
         throw BaseError.notFound("Payroll Item not found");
       }
 
-      const updated = await tx.payrollItem.update({
+      const updated = await tx.payroll.update({
         where: { id },
         data,
       });
@@ -139,7 +139,7 @@ class PayrollItemService {
 
   async remove(id) {
     return this.prisma.$transaction(async (tx) => {
-      const current = await tx.payrollItem.findUnique({
+      const current = await tx.payroll.findUnique({
         where: { id },
       });
 
@@ -163,7 +163,7 @@ class PayrollItemService {
         );
       }
 
-      const deleted = await tx.payrollItem.delete({
+      const deleted = await tx.payroll.delete({
         where: { id },
       });
 

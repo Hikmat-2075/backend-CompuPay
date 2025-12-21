@@ -1,6 +1,6 @@
 const employeeDeductionsQueryConfig = {
   // Kolom yang bisa dicari dengan search text
-  searchableFields: [], // Tidak ada text field seperti "name" atau "code"
+  searchableFields: ["users.full_name"], // Tidak ada text field seperti "name" atau "code"
 
   // Kolom yang bisa difilter langsung (misal ?type=MONTHLY&user_id=...)
   filterableFields: ["user_id", "deduction_id", "type"],
@@ -27,6 +27,14 @@ const employeeDeductionsQueryConfig = {
   dateFields: {
     effective_date: true,
     created_at: true,
+  },
+
+  select: {
+    users: {
+      id: true,
+      full_name: true,
+      email: true,
+    },
   },
 };
 

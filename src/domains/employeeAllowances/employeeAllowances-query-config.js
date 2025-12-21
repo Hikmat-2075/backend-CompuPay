@@ -1,5 +1,5 @@
 const employeeAllowancesQueryConfig = {
-  searchableFields: ["type"],
+  searchableFields: ["users.full_name"],
 
   filterableFields: ["user_id", "allowance_id", "type"],
 
@@ -19,6 +19,14 @@ const employeeAllowancesQueryConfig = {
   },
 
   dateFields: ["effective_date", "created_at", "updated_at"],
+
+  select: {
+    users: {
+      id: true,
+      full_name: true,
+      email: true,
+    },
+  },
 };
 
 export default employeeAllowancesQueryConfig;
