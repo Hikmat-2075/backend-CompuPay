@@ -8,8 +8,8 @@ const deductionsCreateSchema = Joi.object({
 });
 
 const deductionsUpdateSchema = Joi.object({
-    deduction: Joi.string().optional(),
-    description: Joi.string().allow(null, "").optional(),
+    deduction: Joi.string().optional().allow(""),
+    description: Joi.string().allow(null, "").optional().allow(""),
 });
 
 export { deductionsCreateSchema, deductionsUpdateSchema };

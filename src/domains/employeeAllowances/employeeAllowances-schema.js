@@ -3,12 +3,12 @@ import Joi from "joi";
 const typeEnum = ["MONTHLY", "SEMI_MONTHLY", "ONCE"]; // sesuai Prisma
 
 const employeeAllowancesCreateSchema = Joi.object({
-    employeeId: Joi.string().uuid().required().messages({
+    user_id: Joi.string().uuid().required().messages({
         "any.required": "Employee ID is required.",
         "string.guid": "Employee ID must be a valid UUID."
     }),
 
-    allowanceId: Joi.string().uuid().required().messages({
+    allowance_id: Joi.string().uuid().required().messages({
         "any.required": "Allowance ID is required.",
         "string.guid": "Allowance ID must be a valid UUID."
     }),
@@ -34,7 +34,10 @@ const employeeAllowancesCreateSchema = Joi.object({
 
 
 const employeeAllowancesUpdateSchema = Joi.object({
-    allowanceId: Joi.string().uuid().messages({
+    user_id: Joi.string().uuid().messages({
+        "string.guid": "Employee ID must be a valid UUID."
+    }),
+    allowance_id: Joi.string().uuid().messages({
         "string.guid": "Allowance ID must be a valid UUID."
     }),
 

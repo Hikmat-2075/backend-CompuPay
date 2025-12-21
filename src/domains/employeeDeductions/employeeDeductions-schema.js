@@ -1,11 +1,11 @@
 import Joi from "joi";
 
 const employeeDeductionsCreateSchema = Joi.object({
-    employeeId: Joi.string().uuid().required().messages({
+    user_id: Joi.string().uuid().required().messages({
         "string.empty": "Employee ID is required.",
         "string.guid": "Employee ID must be a valid UUID.",
     }),
-    deductionId: Joi.string().uuid().required().messages({
+    deduction_id: Joi.string().uuid().required().messages({
         "string.empty": "Deduction ID is required.",
         "string.guid": "Deduction ID must be a valid UUID.",
     }),

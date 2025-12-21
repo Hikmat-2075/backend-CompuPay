@@ -5,7 +5,7 @@ const positionCreateSchema = Joi.object({
         "string.empty": "Name is required."
     }),
 
-    departmentId: Joi.string().uuid().required().messages({
+    department_id: Joi.string().uuid().required().messages({
         "string.empty": "DepartmentId is required.",
         "any.required": "DepartmentId is required.",
         "string.guid": "Department must be a valid UUID."
@@ -17,7 +17,7 @@ const positionUpdateSchema = Joi.object({
         "string.empty": "Name cannot be empty."
     }),
 
-    departmentId: Joi.string().uuid().optional().messages({
+    department_id: Joi.string().uuid().optional().messages({
         "string.guid": "Department must be a valid UUID."
     })
 });

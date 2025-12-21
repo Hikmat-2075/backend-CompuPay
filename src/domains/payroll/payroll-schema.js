@@ -6,7 +6,7 @@ const payrollCreateSchema = Joi.object({
         "any.required": "Reference number is required"
     }),
 
-    employeeId: Joi.string().uuid().required().messages({
+    user_id: Joi.string().uuid().required().messages({
         "string.guid": "Employee ID must be a valid UUID",
         "string.empty": "Employee ID is required",
         "any.required": "Employee ID is required"
@@ -83,7 +83,7 @@ const payrollUpdateSchema = Joi.object({
         "string.empty": "Reference number cannot be empty"
     }),
 
-    employeeId: Joi.string().uuid().optional().messages({
+    user_id: Joi.string().uuid().optional().messages({
         "string.guid": "Employee ID must be a valid UUID"
     }),
 

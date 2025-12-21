@@ -26,10 +26,10 @@ const departmentCreateSchema = Joi.object({
 
 
 const departmentUpdateSchema = Joi.object({
-    name: Joi.string().optional(),
-    start_salary: Joi.number().integer().optional(),
-    end_salary: Joi.number().integer().optional(),
-    description: Joi.string().allow(null, "").optional(),
+    name: Joi.string().optional().allow(""),
+    start_salary: Joi.number().integer().optional().allow(""),
+    end_salary: Joi.number().integer().optional().allow(""),
+    description: Joi.string().allow(null, "").optional().allow(""),
 })
 .min(1)  // ⬅️ memastikan minimal ada satu field
 .messages({

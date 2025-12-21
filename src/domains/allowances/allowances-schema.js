@@ -8,8 +8,8 @@ const allowancesCreateSchema = Joi.object({
 });
 
 const allowancesUpdateSchema = Joi.object({
-    allowance: Joi.string().optional(),
-    description: Joi.string().allow(null, "").optional(),
+    allowance: Joi.string().optional().allow(""),
+    description: Joi.string().allow(null, "").optional().allow(""),
 });
 
 
