@@ -74,6 +74,8 @@ const userCreateSchema = Joi.object({
 
 
 const userUpdateSchema = Joi.object({
+    employee_number: Joi.string().optional(),
+
     full_name: Joi.string().optional(),
 
     email: Joi.string().email().messages({
@@ -95,6 +97,7 @@ const userUpdateSchema = Joi.object({
     role: Joi.string()
         .valid("USER", "ADMIN", "SUPER_ADMIN")
         .optional(),
+    join_date: Joi.date().optional(),
 
     department_id: Joi.string().uuid().optional(),
     position_id: Joi.string().uuid().optional(),
