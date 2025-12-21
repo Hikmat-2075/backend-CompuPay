@@ -199,6 +199,16 @@ class UserService {
         }
       }
 
+      if (data.salary) {
+        const salaryNum = Number(data.salary);
+        if (!isNaN(salaryNum)) data.salary = salaryNum;
+        else delete data.salary;
+      }
+
+      Object.keys(data).forEach((key) => {
+        if (data[key] === "" || data[key] === null) delete data[key];
+      });
+
       const updated = await tx.user.update({
         where: { id },
         data,

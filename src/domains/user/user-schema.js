@@ -72,19 +72,19 @@ const userCreateSchema = Joi.object({
 
 });
 
-
 const userUpdateSchema = Joi.object({
-    employee_number: Joi.string().optional(),
+    employee_number: Joi.string().optional().allow(""),
 
-    full_name: Joi.string().optional(),
+    full_name: Joi.string().optional().allow(""),
 
-    email: Joi.string().email().messages({
+    email: Joi.string().email().allow("").messages({
         "string.email": "Email must be a valid email address."
     }),
 
     password: Joi.string()
         .min(8)
         .pattern(/^(?=.*[A-Z])(?=.*[^a-zA-Z0-9]).{8,}$/)
+        .allow("")
         .messages({
             "string.min": "Password must be at least 8 characters long.",
             "string.pattern.base":
@@ -96,13 +96,14 @@ const userUpdateSchema = Joi.object({
 
     role: Joi.string()
         .valid("USER", "ADMIN", "SUPER_ADMIN")
-        .optional(),
-    join_date: Joi.date().optional(),
+        .optional()
+        .allow(""),
+    join_date: Joi.date().optional().allow(""),
 
-    department_id: Joi.string().uuid().optional(),
-    position_id: Joi.string().uuid().optional(),
-    salary: Joi.number().integer().positive().optional(),
-    status: Joi.string().valid("ACTIVE", "INACTIVE").optional()
+    department_id: Joi.string().uuid().optional().allow(""),
+    position_id: Joi.string().uuid().optional().allow(""),
+    salary: Joi.number().integer().positive().optional().allow(""),
+    status: Joi.string().valid("ACTIVE", "INACTIVE").optional().allow("")
 });
 
 
