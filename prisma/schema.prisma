@@ -79,6 +79,7 @@ model User {
   employeeAllowances  EmployeeAllowances[]
   employeeDeductions  EmployeeDeductions[]
   payroll       Payroll[]
+  paidPayrolls Payroll[] @relation("PayrollPaidBy")
 
   @@map("users")
 }
