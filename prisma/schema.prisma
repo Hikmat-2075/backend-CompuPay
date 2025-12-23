@@ -172,20 +172,6 @@ model EmployeeDeductions {
   @@map("Employee_Deductions")
 }
 
-// Kehadiran
-model Attendance {
-  id           String   @id @default(uuid())
-  user_id   String
-  log_type     LogType
-  datetime_log DateTime
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
-
-  users User @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@map("Attendance")
-}
-
 //gaji
 model Payroll {
   id               String        @id @default(uuid())
