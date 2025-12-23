@@ -166,8 +166,8 @@ async create(currentUser, data) {
     });
 
     if (!payroll) throw BaseError.notFound("Payroll not found");
-    return payroll;
-  }
+      return payroll;
+    }
 
   async list({ query } = {}) {
     const options = buildQueryOptions(payrollQueryConfig, query);
@@ -232,31 +232,37 @@ async create(currentUser, data) {
     });
   }
 
-  async pay(currentUser, id) {
-    if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
-      throw BaseError.forbidden("Only ADMIN can pay payroll");
-    }
+  async histori({ currentUser, query }){
+    const options = buildQueryOptions(payrollQueryConfig, query);
 
-    return this.prisma.$transaction(async (tx) => {
-      const payroll = await tx.payroll.findUnique({ where: { id } });
-      if (!payroll) throw BaseError.notFound("Payroll not found");
+    options.where = {
+      ...options.where,
+      user_id: currentUser.id,
+    };
 
-      if (payroll.status !== "PENDING") {
-        throw BaseError.badRequest("Payroll is not in PENDING state");
-      }
+    options.include = payrollQueryConfig.relations;
 
-      const updated = await tx.payroll.update({
-        where: { id },
-        data: {
-          status: "PAID",
-        },
-      });
+    const [data, count] = await Promise.all([
+      this.prisma.payroll.findMany(options),
+      this.prisma.payroll.count({ where: options.where }),
+    ]);
 
-      return tx.payroll.findUnique({
-        where: { id: updated.id },
-        include: payrollQueryConfig.relations,
-      });
-    });
+    const page = query?.pagination?.page ?? 1;
+    const limit = query?.pagination?.limit ?? 10;
+    const hasPagination = !!(query?.pagination && !query?.get_all);
+    const totalPages = hasPagination ? Math.ceil(count / limit) : 1;
+
+    return {
+      data,
+      meta: hasPagination
+        ? {
+            totalItems: count,
+            totalPages,
+            currentpage: Number(page),
+            itemsPerPage: Number(limit),
+          }
+        : null,
+    };
   }
 
 
