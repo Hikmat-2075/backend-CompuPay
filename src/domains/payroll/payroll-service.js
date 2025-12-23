@@ -1,5 +1,6 @@
 import BaseError from "../../base_classes/base-error.js";
 import { PrismaService } from "../../common/services/prisma.service.js";
+import Prisma from "@prisma/client";
 import { buildQueryOptions } from "../../utils/buildQueryOptions.js";
 import payrollQueryConfig from "./payroll-query-config.js";
 import Joi from "joi";
@@ -143,9 +144,9 @@ async create(currentUser, data) {
         type: data.type,
         status: "PENDING",
 
-        salary,
-        allowance_amount: allowanceAmount,
-        deductions: deductionAmount,
+        salary: Number(salary),
+        allowance_amount: Number(allowanceAmount),
+        deductions: Number(deductionAmount),
         net,
       },
     });
@@ -210,17 +211,17 @@ async create(currentUser, data) {
         );
       }
 
-      // 🚫 Jangan izinkan edit ref_no, salary, dll
-      if (data.status && data.status !== "CANCELLED") {
-        throw BaseError.badRequest(
-          "Only status CANCELLED is allowed via update"
-        );
-      }
+      // // 🚫 Jangan izinkan edit ref_no, salary, dll
+      // if (data.status && data.status !== "CANCELLED") {
+      //   throw BaseError.badRequest(
+      //     "Only status CANCELLED is allowed via update"
+      //   );
+      // }
 
       const updated = await tx.payroll.update({
         where: { id },
         data: {
-          status: "CANCELLED",
+          status: "PAID",
         },
       });
 
@@ -260,7 +261,7 @@ async create(currentUser, data) {
 
 
   async remove(currentUser, id) {
-    if (currentUser.role !== "ADMIN") {
+    if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
       throw BaseError.forbidden("Only ADMIN can delete Payroll");
     }
 
@@ -268,11 +269,11 @@ async create(currentUser, data) {
       const payroll = await tx.payroll.findUnique({ where: { id } });
       if (!payroll) throw BaseError.notFound("Payroll not found");
 
-      if (payroll.status !== "PENDING") {
-        throw BaseError.badRequest(
-          "Only payroll with PENDING status can be deleted"
-        );
-      }
+      // if (payroll.status !== "PENDING") {
+      //   throw BaseError.badRequest(
+      //     "Only payroll with PENDING status can be deleted"
+      //   );
+      // }
 
       await tx.payroll.delete({ where: { id } });
 

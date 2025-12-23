@@ -38,7 +38,7 @@ async function main() {
   /* =======================
    * 3. USERS
    * ======================= */
-  const password = await bcrypt.hash("password123", 10);
+  const password = await bcrypt.hash("admin123", 10);
 
   const superAdmin = await prisma.user.create({
     data: {
@@ -203,9 +203,9 @@ async function main() {
       type: "MONTHLY",
       status: "PENDING",
 
-      salary,
-      allowance_amount: allowanceAmount,
-      deductions: deductionAmount,
+      salary: Number(salary),
+      allowance_amount: Number(allowanceAmount),
+      deductions: Number(deductionAmount),
       net,
     },
   });

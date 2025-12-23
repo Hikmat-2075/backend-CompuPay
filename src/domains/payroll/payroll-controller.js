@@ -35,7 +35,7 @@ class PayrollController {
     }
 
     async remove(req, res) {
-        const result = await payrollService.remove(req.params.id);
+        const result = await payrollService.remove(req.user, req.params.id);
         return successResponse(res, result);
     }
 

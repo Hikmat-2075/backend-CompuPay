@@ -184,10 +184,10 @@ model Payroll {
   type             TypePayroll
   status           StatusPayroll @default(PENDING)
 
-  salary           Decimal
-  allowance_amount Decimal
-  deductions       Decimal
-  net              Decimal
+  salary           Int
+  allowance_amount Int
+  deductions       Int
+  net              Int
 
   paid_at          DateTime?
   paid_by          String?
