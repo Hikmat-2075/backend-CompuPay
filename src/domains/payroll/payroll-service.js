@@ -12,16 +12,14 @@ class PayrollService {
   async create(currentUser, data) {
     let validation = "";
     const stack = [];
+
     const fail = (msg, path) => {
       validation += (validation ? " " : "") + msg;
       stack.push({ message: msg, path: [path] });
     };
 
-    if (currentUser.position.name !== "HR") {
-      fail(
-        "Forbidden, only HRnpm run dev is allowed to create Payroll",
-        "role"
-      );
+    if (currentUser.position?.name !== "HR") {
+      fail("Forbidden, only HR is allowed to create Payroll", "role");
       throw new Joi.ValidationError(validation, stack);
     }
 
@@ -29,31 +27,76 @@ class PayrollService {
       const payrollExist = await tx.payroll.findFirst({
         where: { ref_no: data.ref_no },
       });
+
       if (payrollExist) {
         fail("Reference number already exists", "ref_no");
         throw new Joi.ValidationError(validation, stack);
       }
 
-      // cek employee id
       const employee = await tx.user.findUnique({
         where: { id: data.user_id },
       });
+
       if (!employee) {
         fail("Employee not found", "user_id");
         throw new Joi.ValidationError(validation, stack);
       }
 
-      // create payroll
-      const created = await tx.payroll.create({
-        data,
+      const salary = new Prisma.Decimal(employee.salary);
+
+      // ✅ Allowance AKTIF & sesuai tanggal payroll
+      const empAllowances = await tx.employeeAllowances.findMany({
+        where: {
+          user_id: employee.id,
+          effective_date: { lte: new Date(data.date_to) },
+        },
       });
 
-      return await tx.payroll.findUnique({
+      const allowance = empAllowances.reduce(
+        (t, a) => t.plus(a.amount),
+        new Prisma.Decimal(0)
+      );
+
+      // ✅ Deduction AKTIF & sesuai tanggal payroll
+      const empDeductions = await tx.employeeDeductions.findMany({
+        where: {
+          user_id: employee.id,
+          effective_date: { lte: new Date(data.date_to) },
+        },
+      });
+
+      const deductions = empDeductions.reduce(
+        (t, d) => t.plus(d.amount),
+        new Prisma.Decimal(0)
+      );
+
+      const net = salary.plus(allowance).minus(deductions);
+
+      const created = await tx.payroll.create({
+        data: {
+          ref_no: data.ref_no,
+          user_id: employee.id,
+
+          date_from: new Date(data.date_from),
+          date_to: new Date(data.date_to),
+
+          type: data.type,
+          status: "PENDING",
+
+          salary,
+          allowance_amount: allowance,
+          deductions,
+          net,
+        },
+      });
+
+      return tx.payroll.findUnique({
         where: { id: created.id },
         include: payrollQueryConfig.relations,
       });
     });
   }
+
 
   async detail(id) {
     const payroll = await this.prisma.payroll.findUnique({
@@ -93,55 +136,44 @@ class PayrollService {
   }
 
   async update(currentUser, id, data) {
+    if (currentUser.position?.name !== "HR") {
+      throw BaseError.forbidden("Only HR can update payroll");
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.payroll.findUnique({ where: { id } });
       if (!current) throw BaseError.notFound("Payroll not found");
 
-      let validation = "";
-      const stack = [];
-      const fail = (msg, path) => {
-        validation += (validation ? " " : "") + msg;
-        stack.push({ message: msg, path: [path] });
-      };
-
-      if (currentUser.position.name !== "HR") {
-        fail("Forbidden, only HR is allowed to update Payroll", "role");
-        throw new Joi.ValidationError(validation, stack);
+      if (current.status !== "PENDING") {
+        throw BaseError.badRequest(
+          "Only payroll with PENDING status can be updated"
+        );
       }
 
-      // cek ref_no duplicate
       if (data.ref_no) {
         const refExist = await tx.payroll.findFirst({
           where: { ref_no: data.ref_no, NOT: { id } },
         });
         if (refExist) {
-          fail("Reference number already exists", "ref_no");
-          throw new Joi.ValidationError(validation, stack);
+          throw BaseError.badRequest("Reference number already exists");
         }
       }
 
-      // cek user_id jika diupdate
-      if (data.user_id) {
-        const employee = await tx.user.findUnique({
-          where: { id: data.user_id },
-        });
-        if (!employee) {
-          fail("Employee not found", "user_id");
-          throw new Joi.ValidationError(validation, stack);
-        }
-      }
-
-      const updated = await tx.payroll.update({
+      await tx.payroll.update({
         where: { id },
-        data,
+        data: {
+          ref_no: data.ref_no,
+          status: data.status,
+        },
       });
 
-      return await tx.payroll.findUnique({
+      return tx.payroll.findUnique({
         where: { id },
         include: payrollQueryConfig.relations,
       });
     });
   }
+
 
   async remove(currentUser, id) {
     if (currentUser.role !== "ADMIN") {
@@ -164,5 +196,6 @@ class PayrollService {
     });
   }
 }
+
 
 export default new PayrollService();

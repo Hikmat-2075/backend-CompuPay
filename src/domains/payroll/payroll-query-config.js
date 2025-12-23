@@ -30,17 +30,6 @@ const payrollQueryConfig = {
         date_from: "Payroll date period from",
         date_to: "Payroll date period to",
     },
-
-    messages: {
-        SEARCH_NOT_ALLOWED: (field) =>
-            `Field "${field}" tidak dapat digunakan untuk pencarian.`,
-        FILTER_NOT_ALLOWED: (field) =>
-            `Field "${field}" tidak tersedia untuk filter.`,
-        ORDER_NOT_ALLOWED: (field) =>
-            `Field "${field}" tidak dapat digunakan untuk pengurutan.`,
-        INVALID_DATE: (field) =>
-            `Format tanggal pada field "${field}" tidak valid (gunakan format ISO yyyy-mm-dd).`,
-    },
 };
 
 export default payrollQueryConfig;
