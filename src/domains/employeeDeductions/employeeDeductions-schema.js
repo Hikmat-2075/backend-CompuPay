@@ -29,9 +29,9 @@ const employeeDeductionsCreateSchema = Joi.object({
 });
 
 const employeeDeductionsUpdateSchema = Joi.object({
-    type: Joi.string().valid("MONTHLY", "SEMI_MONTHLY", "ONCE"),
-    amount: Joi.number().integer().min(0),
-    effective_date: Joi.date().iso()
+    type: Joi.string().valid("MONTHLY", "SEMI_MONTHLY", "ONCE").allow(""),
+    amount: Joi.number().integer().min(0).allow(""),
+    effective_date: Joi.date().iso().allow("")
 }).min(1).messages({
     "object.min": "At least one field must be provided for update."
 });

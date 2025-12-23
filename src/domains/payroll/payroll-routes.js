@@ -34,6 +34,11 @@ class PayrollRoutes extends BaseRoutes {
             authTokenMiddleware.authenticate,
             tryCatch(PayrollController.remove)
         ]);
+
+        this.router.post("/:id", [
+            authTokenMiddleware.authenticate,
+            tryCatch(PayrollController.pay)
+        ])
     }
 }
 

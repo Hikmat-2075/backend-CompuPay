@@ -38,6 +38,18 @@ class PayrollController {
         const result = await payrollService.remove(req.params.id);
         return successResponse(res, result);
     }
+
+      async pay(req, res) {
+    const result = await payrollService.pay(
+      req.user,
+      req.params.id
+    );
+    return successResponse(
+      res,
+      result,
+      "Payroll paid successfully"
+    );
+  }
 }
 
 export default new PayrollController();

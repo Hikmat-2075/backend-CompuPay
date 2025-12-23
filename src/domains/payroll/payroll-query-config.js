@@ -20,10 +20,7 @@ const payrollQueryConfig = {
     ],
 
     relations: {
-        // Tidak ada lagi relation items
-        // Jika Payroll punya relasi ke User (misal payroll dibuat oleh HR),
-        // tambahkan di sini, contoh:
-        // createdBy: true
+        users: true
     },
 
     dateFields: {

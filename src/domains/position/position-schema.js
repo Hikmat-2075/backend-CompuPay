@@ -13,11 +13,11 @@ const positionCreateSchema = Joi.object({
 });
 
 const positionUpdateSchema = Joi.object({
-    name: Joi.string().optional().messages({
+    name: Joi.string().optional().allow("").messages({
         "string.empty": "Name cannot be empty."
     }),
 
-    department_id: Joi.string().uuid().optional().messages({
+    department_id: Joi.string().uuid().optional().allow("").messages({
         "string.guid": "Department must be a valid UUID."
     })
 });

@@ -34,23 +34,23 @@ const employeeAllowancesCreateSchema = Joi.object({
 
 
 const employeeAllowancesUpdateSchema = Joi.object({
-    user_id: Joi.string().uuid().messages({
+    user_id: Joi.string().uuid().allow("").messages({
         "string.guid": "Employee ID must be a valid UUID."
     }),
-    allowance_id: Joi.string().uuid().messages({
+    allowance_id: Joi.string().uuid().allow("").messages({
         "string.guid": "Allowance ID must be a valid UUID."
     }),
 
-    type: Joi.string().valid(...typeEnum).messages({
+    type: Joi.string().valid(...typeEnum).allow("").messages({
         "any.only": `Type must be one of: ${typeEnum.join(", ")}`
     }),
 
-    amount: Joi.number().integer().positive().messages({
+    amount: Joi.number().integer().positive().allow("").messages({
         "number.base": "Amount must be a number.",
         "number.positive": "Amount must be greater than 0."
     }),
 
-    effective_date: Joi.date().iso().messages({
+    effective_date: Joi.date().iso().allow("").messages({
         "date.base": "Effective date must be a valid ISO date."
     })
     })
