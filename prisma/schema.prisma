@@ -78,7 +78,6 @@ model User {
 
   employeeAllowances  EmployeeAllowances[]
   employeeDeductions  EmployeeDeductions[]
-  attendance          Attendance[]
   payroll       Payroll[]
 
   @@map("users")
