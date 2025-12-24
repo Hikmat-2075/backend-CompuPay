@@ -49,9 +49,23 @@ class AuthController {
 			throw Error("Failed to get user profile");
 		}
 
+		const user = await prisma.user.findUnique({
+			where: {
+				id: req.user.id,
+			},
+			include: {
+				departments: true,
+				positions: true,
+				employeeAllowances: true,
+				employeeDeductions: true,
+				payroll: true,
+				paidPayrolls: true,
+			},
+		});
+
 		return successResponse(
 			res,
-			req.user,
+			user,
 			"User profile retrieved successfully",
 		);
 	}
