@@ -59,7 +59,6 @@ class AuthController {
 				employeeAllowances: true,
 				employeeDeductions: true,
 				payroll: true,
-				paidPayrolls: true,
 			},
 		});
 
