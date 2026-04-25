@@ -124,7 +124,16 @@ model Position {
   @@map("Position")
 }
 
+// Kehadiran 
+model Attendance { 
+  id String @id @default(uuid()) 
+  employeeId String 
+  log_type LogType 
+  datetime_log DateTime 
+  date_updated DateTime @updatedAt 
 
+  employee Employee @relation(fields: [employeeId], references: [id]) @@map("Attendance") 
+}
 
 //Tunjangan
 model Allowances {
