@@ -8,6 +8,7 @@ import payrollRoutes from "./domains/payroll/payroll-routes.js";
 import employeeAllowancesRoutes from "./domains/employeeAllowances/employeeAllowances-routes.js";
 import AllowancesRoutes from "./domains/allowances/allowances-routes.js"
 import employeeDeductionRoutes from "./domains/employeeDeductions/employeeDeductions-routes.js"
+import leaveRequestRoutes from "./domains/leaveRequest/leaveRequest-routes.js";
 
 
 const router = express.Router();
@@ -48,7 +49,12 @@ const appsRoutes = [
 	{
 		path: "/employeeDeduction",
 		route: employeeDeductionRoutes,
+	},
+	{
+		path: "/leaveRequest",
+		route: leaveRequestRoutes,
 	}
+
 ];
 
 appsRoutes.forEach(({ path, route }) => {
