@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,14 +7,232 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum requestType {
+  CUTI
+  SAKIT
+}
+
+enum StatusLeaveReq {
+  PENDING
+  APPROVED
+  REJECT
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+}
+
+enum LogType {
+  PRESENT
+  LATE
+  ABSENT
+  SICK
+  LEAVE
+  OVERTIME
+}
+
+enum TypePayroll {
+  MONTHLY
+  SEMI_MONTHLY
+}
+
+enum StatusPayroll {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum TypeDeduction {
+  MONTHLY
+  SEMI_MONTHLY
+  ONCE
+}
+
+enum TypeAllowance {
+  MONTHLY
+  SEMI_MONTHLY
+  ONCE
+}
+
+enum Role {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+model Otp {
+  email      String   @id 
+  otp        String
+  expired_at DateTime
+  created_at DateTime @default(now())
+}
+
 model User {
-  id            String   @id @default(uuid())
-  email         String 
-  password      String
-  profile_uri String?
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-  deleted_at    DateTime?
+  id               String               @id @default(uuid())
+  employee_number  String               @unique
+  full_name        String 
+  email            String               @unique
+  password         String
+  profile_uri      String?
+  role             Role                 @default(USER)
+  status           Status               @default(ACTIVE)
+  join_date        DateTime
+  department_id     String
+  position_id       String
+  salary           Int
+  created_at       DateTime             @default(now())
+  updated_at       DateTime             @updatedAt
+
+  department       Department           @relation(fields: [department_id], references: [id])
+  position         Position             @relation(fields: [position_id], references: [id])
+
+  employeeAllowances  EmployeeAllowances[]
+  employeeDeductions  EmployeeDeductions[]
+  payroll       Payroll[]
+  paidPayrolls Payroll[] @relation("PayrollPaidBy")
+  leaveRequest LeaveRequest[]
 
   @@map("users")
+}
+
+model Department {
+  id          String     @id @default(uuid())
+  name        String
+  start_salary Int
+  end_salary   Int
+  description  String?
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
+
+  users  User[]
+  positions  Position[]
+
+  @@map("Department")
+}
+
+model Position {
+  id           String     @id @default(uuid())
+  name         String      
+  department_id String
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
+
+  department   Department @relation(fields: [department_id], references: [id])
+  users    User[]
+
+  @@map("Position")
+}
+
+
+
+//Tunjangan
+model Allowances {
+  id          String      @id @default(uuid())
+  allowance   String
+  description String?
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
+
+  employeeAllowances EmployeeAllowances[]
+
+  @@map("Allowances")
+}
+
+model EmployeeAllowances {
+  id             String    @id @default(uuid())
+  user_id     String
+  allowance_id    String
+  type           TypeAllowance
+  amount         Int
+  effective_date DateTime
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  users   User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  allowance  Allowances @relation(fields: [allowance_id], references: [id])
+
+  @@map("Employee_Allowances")
+}
+
+//pemotongan gaji
+model Deductions {
+  id          String      @id @default(uuid())
+  deduction   String
+  description String?
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
+
+  employeeDeductions EmployeeDeductions[]
+
+  @@map("Deductions")
+}
+
+model EmployeeDeductions {
+  id             String    @id @default(uuid())
+  user_id     String
+  deduction_id    String
+  type           TypeDeduction
+  amount         Int
+  effective_date DateTime
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  users  User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  deduction Deductions @relation(fields: [deduction_id], references: [id])
+
+  @@map("Employee_Deductions")
+}
+
+//gaji
+model Payroll {
+  id               String        @id @default(uuid())
+  ref_no           String        @unique
+
+  user_id          String
+  date_from        DateTime
+  date_to          DateTime
+
+  type             TypePayroll
+  status           StatusPayroll @default(PENDING)
+
+  salary           Int
+  allowance_amount Int
+  deductions       Int
+  net              Int
+
+  paid_at          DateTime?
+  paid_by          String?
+
+  created_at       DateTime      @default(now())
+  updated_at       DateTime      @updatedAt
+
+  employee User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  payer    User? @relation("PayrollPaidBy", fields: [paid_by], references: [id])
+
+  @@unique([user_id, date_from, date_to])
+  @@index([user_id])
+  @@map("Payroll")
+}
+
+model LeaveRequest {
+  id String @id@default(uuid())
+
+  user_id     String
+
+  type           requestType
+
+  startDate DateTime 
+  endDate DateTime
+
+  reason String
+
+  attachment String?
+
+  status StatusLeaveReq
+
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  users   User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }

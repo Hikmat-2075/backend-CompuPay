@@ -6,6 +6,7 @@ import { matchPassword, hashPassword } from "../../utils/passwordConfig.js";
 import { PrismaService } from "../../common/services/prisma.service.js";
 import MailerService from "../../common/services/mailer.service.js";
 import logger from "../../utils/logger.js";
+import { hash } from "bcryptjs";
 
 class AuthService {
 	constructor() {
@@ -14,10 +15,97 @@ class AuthService {
 		this.OTP_EXPIRES_IN = process.env.OTP_EXPIRES_IN || "5m";
 	}
 
+	// 1️⃣ Kirim OTP untuk forgot-password
+	async forgetPassword(email) {
+		const user = await this.prisma.user.findUnique({ where: { email } });
+		if (!user) throw BaseError.badRequest("Email not registered");
+
+		const otp = Math.floor(100000 + Math.random() * 900000).toString();
+		const expiredAt = new Date(Date.now() + this._parseExpiry(this.OTP_EXPIRES_IN));
+
+		await this.prisma.otp.upsert({
+			where: { email },
+			update: { otp, expired_at: expiredAt },
+			create: { email, otp, expired_at: expiredAt },
+		});
+
+		// 🔹 Panggil mailer dengan fromName dan from
+		await this.mailer.sendMail({
+			fromName: "CompuPay App",                 // Nama pengirim
+			from: process.env.MAILER_FROM,          // Email pengirim
+			to: email,                               // Email penerima
+			subject: "Reset Password OTP",
+			text: `Your OTP is ${otp}. Valid for 5 minutes.`,
+			html: `<p>Your OTP is <b>${otp}</b>. Valid for 5 minutes.</p>`,
+		});
+
+		logger.info(`OTP Forgot Password sent to ${email}`);
+		return { message: "OTP sent to email" };
+	}
+
+	async verifyOtp(email, otp) {
+		const record = await this.prisma.otp.findUnique({ where: { email } });
+
+		if (!record || record.otp !== otp) {
+			throw BaseError.badRequest("Invalid OTP");
+		}
+
+		if (new Date(record.expired_at) < new Date()) {
+			throw BaseError.badRequest("OTP expired");
+		}
+
+		// OTP valid → hapus supaya tidak bisa dipakai ulang
+		await this.prisma.otp.delete({ where: { email } });
+
+		// 🔥 Buat reset token, berlaku 10 menit
+		const resetToken = generateToken(
+			{ email },     // payload
+			"10m"          // masa berlaku
+		);
+
+		return {
+			message: "OTP verified",
+			reset_token: resetToken,
+		};
+	}
+
+	async resetPassword(reset_token, new_password) {
+		const payload = parseJWT(reset_token);
+		if (!payload) {
+			throw BaseError.badRequest("Invalid or expired reset token");
+		}
+
+		const email = payload.email;
+
+		const hashed = await hashPassword(new_password);
+		await this.prisma.user.update({
+			where: { email },
+			data: { password: hashed },
+		});
+
+		return { message: "Password reset successfully" };
+	}
+
+
+	_parseExpiry(duration) {
+		const match = duration.match(/^(\d+)([smhd])$/);
+		if (!match) throw new Error("Invalid OTP_EXPIRES_IN format");
+
+		const value = parseInt(match[1]);
+		const unit = match[2];
+
+		const multipliers = { s: 1000, m: 60000, h: 3600000, d: 86400000 };
+		return value * multipliers[unit];
+	}
+
+
 	async login(email, password) {
 		let user = await this.prisma.user.findFirst({
 			where: {
 				email: email,
+			},
+			include: {
+				position: true,
 			},
 		});
 
@@ -33,13 +121,16 @@ class AuthService {
 
 		delete user.password;
 
-		const accessToken = generateToken({ id: user.id, type: "access" }, "1d");
+		const accessToken = generateToken(
+			{ id: user.id, role: user.role, position: user.position.name, type: "access" },
+			"1d",
+		);
 		const refreshToken = generateToken(
-			{ id: user.id, type: "refresh" },
-			"365d",
+			{ id: user.id, role: user.role, position: user.position.name, type: "refresh" },
+			"1d",
 		);
 
-		return { access_token: accessToken, refresh_token: refreshToken, user };
+		return { access_token: accessToken, refresh_token: refreshToken, role: user.role, position: user.position.name};
 	}
 
 	async register(data) {
@@ -52,7 +143,7 @@ class AuthService {
 		if (emailExist) {
 			let validation = "";
 			let stack = [];
-
+			
 			validation += "Email already taken.";
 
 			stack.push({
@@ -63,18 +154,19 @@ class AuthService {
 			throw new joi.ValidationError(validation, stack);
 		}
 
-		
-
 		await this.prisma.$transaction(async (tx) => {
 
 			const createduser = await tx.user.create({
 				data: {
+					first_name: data.first_name,
+					last_name: data.last_name,
 					email: data.email,
 					password: await hashPassword(data.password),
+					//role: "Admin",
 				},
 			});
 
-			if (!createduser) {
+			if (!createduser){
 				throw Error("Failed to register");
 			}
 		});
@@ -164,22 +256,22 @@ class AuthService {
 		return otp;
 	}
 
-	_parseExpiry(duration) {
-		const match = duration.match(/^(\d+)([smhd])$/); // cocokkan angka + 1 huruf (s/m/h/d)
-		if (!match) throw new Error("Invalid OTP_EXPIRES_IN format");
+	// _parseExpiry(duration) {
+	// 	const match = duration.match(/^(\d+)([smhd])$/); // cocokkan angka + 1 huruf (s/m/h/d)
+	// 	if (!match) throw new Error("Invalid OTP_EXPIRES_IN format");
 
-		const value = parseInt(match[1]);
-		const user = match[2];
+	// 	const value = parseInt(match[1]);
+	// 	const user = match[2];
 
-		const multipliers = {
-			s: 1000,
-			m: 60 * 1000,
-			h: 60 * 60 * 1000,
-			d: 24 * 60 * 60 * 1000,
-		};
+	// 	const multipliers = {
+	// 		s: 1000,
+	// 		m: 60 * 1000,
+	// 		h: 60 * 60 * 1000,
+	// 		d: 24 * 60 * 60 * 1000,
+	// 	};
 
-		return value * multipliers[user];
-	}
+	// 	return value * multipliers[user];
+	// }
 }
 
 export default new AuthService();

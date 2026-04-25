@@ -32,7 +32,7 @@ class MailerService {
 			logger.info("Message sent: %s", info.messageId);
 			return info;
 		} catch (error) {
-			logger.error("Error sending email: ".error);
+			logger.error("Error sending email: ", error);
 		}
 	}
 }
