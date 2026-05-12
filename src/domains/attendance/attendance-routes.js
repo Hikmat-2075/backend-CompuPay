@@ -1,16 +1,20 @@
 import BaseRoutes from "../../base_classes/base-routes.js";
 import AttendanceController from "./attendance-controller.js";
-import {
-    attendanceCreateSchema,
-    attendanceUpdateSchema,
-} from "./attendance-schema.js";
 
 import tryCatch from "../../utils/tryCatcher.js";
-import validateCredentials from '../../middlewares/validate-credentials-middleware.js';
+import validateCredentials from "../../middlewares/validate-credentials-middleware.js";
 import authTokenMiddleware from "../../middlewares/auth-token-middleware.js";
+import uploadFile from "../../middlewares/upload-file-middleware.js";
+import { attendanceCreateSchema } from "./attendance-schema.js";
 
 class AttendanceRoutes extends BaseRoutes {
     routes() {
+
+        this.router.get("/today", [
+            authTokenMiddleware.authenticate,
+            tryCatch(AttendanceController.today)
+        ]);
+
         this.router.get("/", [
             authTokenMiddleware.authenticate,
             tryCatch(AttendanceController.list)
@@ -22,20 +26,10 @@ class AttendanceRoutes extends BaseRoutes {
         ]);
 
         this.router.post("/", [
+            authTokenMiddleware.authenticate,
+            uploadFile("image").single("photo"),
             validateCredentials(attendanceCreateSchema),
-            authTokenMiddleware.authenticate,
             tryCatch(AttendanceController.create)
-        ]);
-
-        this.router.put("/:id", [
-            validateCredentials(attendanceUpdateSchema),
-            authTokenMiddleware.authenticate,
-            tryCatch(AttendanceController.update)
-        ]);
-
-        this.router.delete("/:id", [
-            authTokenMiddleware.authenticate,
-            tryCatch(AttendanceController.remove) // ✅ FIX (tadi salah delete)
         ]);
     }
 }

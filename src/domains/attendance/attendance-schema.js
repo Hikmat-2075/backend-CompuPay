@@ -1,38 +1,11 @@
 import Joi from "joi";
 
-const LogTypes = [
-    "PRESENT",
-    "LATE",
-    "ABSENT",
-    "SICK",
-    "LEAVE",
-    "OVERTIME"
-];
-
 const attendanceCreateSchema = Joi.object({
-    employeeId: Joi.string().uuid().required().messages({
-        "string.empty": "Employee ID is required.",
-        "string.guid": "Employee ID must be a valid UUID"
-    }),
-
-    log_type: Joi.string()
-        .valid(...LogTypes)
-        .required()
-        .messages({
-            "any.only": `Log type must be one of: ${LogTypes.join(", ")}`,
-            "string.empty": "Log type is required.",
-        }),
-
-    datetime_log: Joi.date().required().messages({
-        "date.base": "Datetime log must be a valid date.",
-        "any.required": "Datetime log is required."
-    }),
+    type: Joi.string().valid("CHECK_IN", "CHECK_OUT").required(),
+    datetime_log: Joi.date().required(),
+    latitude: Joi.number().required(),
+    longitude: Joi.number().required(),
+    accuracy: Joi.number().optional(),
 });
 
-const attendanceUpdateSchema = Joi.object({
-    employeeId: Joi.string().uuid().optional(),
-    log_type: Joi.string().valid(...LogTypes).optional(),
-    datetime_log: Joi.date().optional(),
-});
-
-export { attendanceCreateSchema, attendanceUpdateSchema };
+export { attendanceCreateSchema };

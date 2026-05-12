@@ -1,32 +1,60 @@
+import fs from "fs";
+import path from "path";
 import BaseError from "../../base_classes/base-error.js";
 import { PrismaService } from "../../common/services/prisma.service.js";
+import attendanceQueryConfig from "./attendance-query-config.js";
 import { buildQueryOptions } from "../../utils/buildQueryOptions.js";
-import attendanceQueryConfig from "./attendance-query-config.js"; // ✅ FIX typo
-import Joi from "joi";
+import { getDistance } from "../../utils/geo.js";
 
 class AttendanceService {
     constructor() {
         this.prisma = new PrismaService();
     }
 
-    async create(data) { // ✅ FIX param
-        let validation = "";
-        const stack = [];
-
-        const fail = (msg, path) => {
-            validation += (validation ? " " : "") + msg;
-            stack.push({ message: msg, path: [path] });
-        };
-
+    async create(data, file) {
         return this.prisma.$transaction(async (tx) => {
 
-            const startDay = new Date(data.datetime_log);
+            if (file) {
+                const uploadDir = path.join(process.cwd(), "public/assets/attendance");
+
+                if (!fs.existsSync(uploadDir)) {
+                    fs.mkdirSync(uploadDir, { recursive: true });
+                }
+
+                const filename = Date.now() + "-" + file.originalname;
+                const filepath = path.join(uploadDir, filename);
+
+                fs.writeFileSync(filepath, file.buffer);
+
+                data.photo_url = `assets/attendance/${filename}`;
+            }
+
+           //const now = new Date();
+
+            // override input
+            //data.datetime_log = now;
+
+            let now;
+
+            if (data.datetime_log) {
+                now = new Date(data.datetime_log);
+
+                if (isNaN(now)) {
+                    throw BaseError.badRequest("Invalid datetime format");
+                }
+            } else {
+                now = new Date();
+            }
+
+            data.datetime_log = now;
+
+            const startDay = new Date(now);
             startDay.setHours(0, 0, 0, 0);
 
-            const endDay = new Date(data.datetime_log);
+            const endDay = new Date(now);
             endDay.setHours(23, 59, 59, 999);
 
-            const attendanceExist = await tx.attendance.findFirst({
+            const today = await tx.attendance.findMany({
                 where: {
                     employeeId: data.employeeId,
                     datetime_log: {
@@ -36,123 +64,220 @@ class AttendanceService {
                 }
             });
 
-            if (attendanceExist) {
-                fail("Attendance for this employee already exists today", "employeeId");
-                throw new Joi.ValidationError(validation, stack); // ✅ FIX
+            if (data.type === "CHECK_IN") {
+                if (today.find(a => a.type === "CHECK_IN")) {
+                    throw BaseError.badRequest("Already check-in today");
+                }
             }
 
-            const created = await tx.attendance.create({ data });
-
-            if (!created) {
-                throw new Error("Failed to create Attendance");
+            if (data.type === "CHECK_OUT") {
+                if (!today.find(a => a.type === "CHECK_IN")) {
+                    throw BaseError.badRequest("Must check-in first");
+                }
+                if (today.find(a => a.type === "CHECK_OUT")) {
+                    throw BaseError.badRequest("Already check-out today");
+                }
             }
+
+            const utcDate = new Date(data.datetime_log);
+
+            const parts = new Intl.DateTimeFormat("en-GB", {
+                timeZone: "Asia/Jakarta",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false
+            }).formatToParts(utcDate);
+
+            const hour = Number(parts.find(p => p.type === "hour").value);
+            const minutes = Number(parts.find(p => p.type === "minute").value);
+
+            const totalMinutes = hour * 60 + minutes;
+
+            const batasMasuk = 9 * 60;     // 09:00
+            const batasPulang = 17 * 60;   // 17:00
+
+            let status = "ON_TIME";
+
+            if (data.type === "CHECK_IN" && totalMinutes > batasMasuk) {
+                status = "LATE";
+            }
+
+            if (data.type === "CHECK_OUT" && totalMinutes < batasPulang) {
+                status = "EARLY";
+            }
+
+            data.latitude = Number(data.latitude);
+            data.longitude = Number(data.longitude);
+            data.accuracy = data.accuracy ? Number(data.accuracy) : null;
+
+            if (
+                data.accuracy === null ||
+                isNaN(data.accuracy)
+            ) {
+                throw BaseError.badRequest(
+                    "Invalid GPS accuracy"
+                );
+            }
+
+            if (data.accuracy > 5) {
+                throw BaseError.badRequest(
+                    "GPS accuracy too low"
+                );
+            }
+            if (isNaN(data.latitude) || isNaN(data.longitude)) {
+                throw BaseError.badRequest("Invalid coordinates");
+            }
+
+            const OFFICE_LAT = -6.2;
+            const OFFICE_LNG = 106.8;
+            const MAX_RADIUS = 100; 
+
+            const distance = getDistance(
+                OFFICE_LAT,
+                OFFICE_LNG,
+                data.latitude,
+                data.longitude
+            );
+
+            if (distance > MAX_RADIUS) {
+                throw BaseError.badRequest("You are outside office area");
+            }
+
+            const created = await tx.attendance.create({
+                data: {
+                    ...data,
+                    status
+                }
+            });
 
             return created;
         });
     }
 
-    async detail(id) {
-        const attendance = await this.prisma.attendance.findUnique({
-            where: { id }
+    async today(employeeId) {
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+
+        const records = await this.prisma.attendance.findMany({
+            where: {
+                employeeId,
+                datetime_log: {
+                    gte: start,
+                    lt: end
+                }
+            }
         });
 
-        if (!attendance) {
-            throw BaseError.notFound("Attendance not found");
-        }
-
-        return attendance;
+        return {
+            checkIn: records.find(r => r.type === "CHECK_IN"),
+            checkOut: records.find(r => r.type === "CHECK_OUT")
+        };
     }
 
     async list({ query } = {}) {
         const options = buildQueryOptions(attendanceQueryConfig, query);
+       if (query?.search) {
+            const rawSearch = query.search.toLowerCase();
 
+            const orConditions = [
+                {
+                    users: {
+                        is: {
+                            full_name: {
+                                contains: rawSearch,
+                                mode: "insensitive",
+                            },
+                        },
+                    },
+                },
+            ];
+
+            // partial enum detection
+            if ("check in".includes(rawSearch)) {
+                orConditions.push({
+                    type: "CHECK_IN",
+                });
+            }
+
+            if ("check out".includes(rawSearch)) {
+                orConditions.push({
+                    type: "CHECK_OUT",
+                });
+            }
+
+            if ("late".includes(rawSearch)) {
+                orConditions.push({
+                    status: "LATE",
+                });
+            }
+
+            if ("early".includes(rawSearch)) {
+                orConditions.push({
+                    status: "EARLY",
+                });
+            }
+
+            if ("on_time".includes(rawSearch)) {
+                orConditions.push({
+                    status: "ON_TIME",
+                });
+            }
+
+            if ("pending".includes(rawSearch)) {
+                orConditions.push({
+                    status: "PENDING",
+                });
+            }
+
+            options.where = {
+                OR: orConditions,
+            };
+        }
         const [data, count] = await Promise.all([
-            this.prisma.attendance.findMany(options),
-            this.prisma.attendance.count({ where: options.where }),
+        this.prisma.attendance.findMany({
+            ...options,
+
+            include: {
+            users: true,
+            },
+        }),
+
+        this.prisma.attendance.count({
+            where: options.where,
+        }),
         ]);
 
-        const page = query?.pagination?.page ?? 1;
-        const limit = query?.pagination?.limit ?? 10;
-        const hasPagination = !!(query?.pagination && !query?.get_all);
-        const totalPages = hasPagination ? Math.ceil(count / limit) : 1;
-
-        return {
-            data,
-            meta: hasPagination
-                ? {
-                    totalItems: count,
-                    totalPages,
-                    currentpage: Number(page),
-                    itemsPerPage: Number(limit),
-                }
-                : null,
-        };
+        return { data, count };
     }
 
-    async update(id, data) { // ✅ FIX param
-        return this.prisma.$transaction(async (tx) => {
-
-            const current = await tx.attendance.findUnique({ where: { id } });
-
-            if (!current) {
-                throw BaseError.notFound("Attendance not found");
-            }
-
-            let validation = "";
-            const stack = [];
-
-            const fail = (message, path) => {
-                validation += (validation ? " " : "") + message;
-                stack.push({ message, path: [path] });
-            };
-
-            if (data.employeeId || data.datetime_log) {
-
-                const newEmployeeId = data.employeeId ?? current.employeeId;
-                const newLogDate = data.datetime_log ?? current.datetime_log;
-
-                const startDay = new Date(newLogDate);
-                startDay.setHours(0, 0, 0, 0);
-
-                const endDay = new Date(newLogDate);
-                endDay.setHours(23, 59, 59, 999);
-
-                const attendanceExist = await tx.attendance.findFirst({
-                    where: {
-                        employeeId: newEmployeeId,
-                        datetime_log: {
-                            gte: startDay,
-                            lt: endDay
-                        },
-                        NOT: { id }
-                    }
-                });
-
-                if (attendanceExist) {
-                    fail("Attendance for this employee already exists today", "employeeId");
-                    throw new Joi.ValidationError(validation, stack);
-                }
-            }
-
-            const updated = await tx.attendance.update({
-                where: { id },
-                data,
-            });
-
-            return updated;
-        });
-    }
-
-    async remove(id) {
-        const deleted = await this.prisma.attendance.delete({
+    async detail(id) {
+        const data = await this.prisma.attendance.findUnique({
             where: { id }
         });
 
-        return {
-            message: "Attendance deleted successfully",
-            data: deleted
-        };
+        if (!data) throw BaseError.notFound("Attendance not found");
+
+        return data;
     }
+
+    async remove(currentUser, id) {
+    return this.prisma.$transaction(async (tx) => {
+
+        if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
+            throw BaseError.forbidden("You are not allowed to delete attendance");
+        }
+        const current = await tx.attendance.findUnique({
+            where: { id },
+        });
+
+        if (!current) {
+            throw BaseError.notFound("Attendance not found");
+        }
+    });
+}
 }
 
 export default new AttendanceService();

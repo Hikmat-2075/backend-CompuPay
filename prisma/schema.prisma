@@ -61,6 +61,18 @@ enum Role {
   SUPER_ADMIN
 }
 
+enum AttendanceType {
+  CHECK_IN
+  CHECK_OUT
+}
+
+enum AttendanceStatus {
+  ON_TIME
+  LATE
+  PENDING
+  EARLY
+}
+
 model Otp {
   email      String   @id 
   otp        String
@@ -92,6 +104,7 @@ model User {
   payroll       Payroll[]
   paidPayrolls Payroll[] @relation("PayrollPaidBy")
   leaveRequest LeaveRequest[]
+  attendances Attendance[]
 
   @@map("users")
 }
@@ -125,14 +138,28 @@ model Position {
 }
 
 // Kehadiran 
-model Attendance { 
-  id String @id @default(uuid()) 
-  employeeId String 
-  log_type LogType 
-  datetime_log DateTime 
-  date_updated DateTime @updatedAt 
+model Attendance {
+  id            String   @id @default(uuid())
+  employeeId    String
 
-  employee Employee @relation(fields: [employeeId], references: [id]) @@map("Attendance") 
+  type          AttendanceType
+  status        AttendanceStatus
+
+  datetime_log  DateTime
+
+  latitude      Float
+  longitude     Float
+  accuracy      Float?
+
+  photo_url     String?
+
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  users      User     @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId, datetime_log])
+  @@map("Attendance")
 }
 
 //Tunjangan
