@@ -134,47 +134,46 @@ class AuthService {
 	}
 
 	async register(data) {
-		const emailExist = await this.prisma.user.findFirst({
-			where: {
+	const emailExist = await this.prisma.user.findFirst({
+		where: { email: data.email },
+	});
+
+	if (emailExist) {
+		let validation = "";
+		let stack = [];
+
+		validation += "Email already taken.";
+
+		stack.push({
+			message: "Email already taken.",
+			path: ["email"],
+		});
+
+		throw new joi.ValidationError(validation, stack);
+	}
+
+	await this.prisma.$transaction(async (tx) => {
+
+		const createduser = await tx.user.create({
+			data: {
+				first_name: data.first_name,
+				last_name: data.last_name,
 				email: data.email,
+				password: await hashPassword(data.password),
+
+				employee_number: "EMP-" + Date.now()
 			},
 		});
 
-		if (emailExist) {
-			let validation = "";
-			let stack = [];
-			
-			validation += "Email already taken.";
-
-			stack.push({
-				message: "Email already taken.",
-				path: ["email"],
-			});
-
-			throw new joi.ValidationError(validation, stack);
+		if (!createduser){
+			throw Error("Failed to register");
 		}
+	});
 
-		await this.prisma.$transaction(async (tx) => {
-
-			const createduser = await tx.user.create({
-				data: {
-					first_name: data.first_name,
-					last_name: data.last_name,
-					email: data.email,
-					password: await hashPassword(data.password),
-					//role: "Admin",
-				},
-			});
-
-			if (!createduser){
-				throw Error("Failed to register");
-			}
-		});
-
-		return {
-			message: "Registration successful",
-		};
-	}
+	return {
+		message: "Registration successful",
+	};
+}
 
 	async refreshToken(refreshToken) {
 		if (!refreshToken) {
