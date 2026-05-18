@@ -1,5 +1,7 @@
 import BaseError from "../../base_classes/base-error.js";
 import { PrismaService } from "../../common/services/prisma.service.js";
+import fs from "fs";
+import path from "path";
 
 class LeaverequestService {
     constructor() {
@@ -10,9 +12,30 @@ class LeaverequestService {
         return currentUser.role === "ADMIN" || currentUser.role === "SUPER_ADMIN";
     }
 
-    async create(currentUser, data) {
+    saveAttachment(file) {
+        const uploadsDir = path.join(process.cwd(), "public/assets/leave-requests");
+        if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+
+        const today = new Date();
+        const dateFormat = today.toISOString().split("T")[0]; // Format: YYYY-MM-DD
+        const ext = path.extname(file.originalname); // Ambil extension file
+        const filename = `${dateFormat}${ext}`;
+        const filepath = path.join(uploadsDir, filename);
+
+        fs.writeFileSync(filepath, file.buffer);
+
+        return `assets/leave-requests/${filename}`;
+    }
+
+    async create(currentUser, data, file) {
         if (!data) {
             throw BaseError.badRequest("Request body is required");
+        }
+
+        if (file) {
+            data.attachment = this.saveAttachment(file);
         }
 
         const startDate = new Date(data.startDate);
@@ -159,7 +182,7 @@ class LeaverequestService {
         return leaveRequest;
     }
 
-    async update(currentUser, id, data) {
+    async update(currentUser, id, data, file) {
         return this.prisma.$transaction(async (tx) => {
             const current = await tx.leaveRequest.findUnique({ where: { id } });
 
@@ -179,6 +202,17 @@ class LeaverequestService {
 
             if (!admin && data.status) {
                 throw BaseError.forbidden("Only admin can change leave request status");
+            }
+
+            if (file) {
+                data.attachment = this.saveAttachment(file);
+
+                if (current.attachment) {
+                    const oldPath = path.join(process.cwd(), "public", current.attachment);
+                    if (fs.existsSync(oldPath)) {
+                        fs.unlinkSync(oldPath);
+                    }
+                }
             }
 
             const nextStartDate = data.startDate ? new Date(data.startDate) : current.startDate;
