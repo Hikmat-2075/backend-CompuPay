@@ -3,7 +3,7 @@ import leaveRequestService from "./leaveRequest-service.js";
 
 class LeaverequestController {
     async create(req, res) {
-        const result = await leaveRequestService.create(req.user, req.body);
+        const result = await leaveRequestService.create(req.user, req.body, req.file);
         return createdResponse(res, result);
     }
 
@@ -27,7 +27,8 @@ class LeaverequestController {
         const result = await leaveRequestService.update(
             req.user,
             req.params.id,
-            req.body
+            req.body,
+            req.file
         );
         return successResponse(res, result);
     }
