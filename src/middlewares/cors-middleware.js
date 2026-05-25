@@ -1,19 +1,25 @@
 import cors from "cors";
 
 const allowedOrigins = [
-  "http://localhost:3001",
   "https://laskara.api.dev.cciunitel.com",
 ];
 
 const corsMiddleware = cors({
   origin: function (origin, callback) {
+
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
+
+    // izinkan localhost port berapa saja
+    if (
+      origin.startsWith("http://localhost:") ||
+      allowedOrigins.includes(origin)
+    ) {
       return callback(null, true);
-    } else {
-      return callback(new Error("Not allowed by CORS"));
     }
+
+    return callback(new Error("Not allowed by CORS"));
   },
+
   credentials: true,
 });
 
