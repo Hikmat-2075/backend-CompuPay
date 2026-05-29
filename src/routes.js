@@ -9,6 +9,7 @@ import employeeAllowancesRoutes from "./domains/employeeAllowances/employeeAllow
 import AllowancesRoutes from "./domains/allowances/allowances-routes.js"
 import employeeDeductionRoutes from "./domains/employeeDeductions/employeeDeductions-routes.js"
 import leaveRequestRoutes from "./domains/leaveRequest/leaveRequest-routes.js";
+import pointRecordRoutes from "./domains/PointRecord/PointRecord-routes.js";
 
 
 const router = express.Router();
@@ -53,7 +54,11 @@ const appsRoutes = [
 	{
 		path: "/leaveRequest",
 		route: leaveRequestRoutes,
-	}
+	},
+	{
+  		path: "/pointRecord",
+  		route: pointRecordRoutes,
+	},
 
 ];
 
