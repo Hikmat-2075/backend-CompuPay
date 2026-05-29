@@ -158,6 +158,8 @@ model Attendance {
 
   users      User     @relation(fields: [employeeId], references: [id])
 
+  pointRecord   PointRecord?
+
   @@index([employeeId, datetime_log])
   @@map("Attendance")
 }

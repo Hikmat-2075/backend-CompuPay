@@ -59,11 +59,10 @@ const appsRoutes = [
 	{
 		path: "/attendance",
 		route: attendanceRoutes,
-	}
 	},
 	{
-  		path: "/pointRecord",
-  		route: pointRecordRoutes,
+		path: "/pointRecord",
+		route: pointRecordRoutes,
 	},
 
 ];

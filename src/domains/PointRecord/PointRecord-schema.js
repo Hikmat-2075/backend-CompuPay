@@ -5,12 +5,12 @@ const pointRecordListQuerySchema = Joi.object({
 
   filter: Joi.object({
     attendanceId: Joi.string().uuid().optional(),
+    
+    // Range point (Disamakan secara presisi dengan state payload frontend)
+    total_point_min: Joi.number().integer().optional(),
+    total_point_max: Joi.number().integer().optional(),
 
-    // range point (manual in service)
-    point_min: Joi.number().integer().optional(),
-    point_max: Joi.number().integer().optional(),
-
-    // filter department (manual in service)
+    // Filter department
     department_id: Joi.string().uuid().optional(),
   }).optional(),
 
