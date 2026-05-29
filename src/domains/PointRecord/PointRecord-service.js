@@ -48,7 +48,7 @@ class PointRecordService {
         return sum + (att.pointRecord?.point ?? 0);
       }, 0);
 
-      // Pisahkan field relasi mentah agar return clean & secure
+
       const { attendances, password, ...userFields } = user;
 
       return {
@@ -57,7 +57,7 @@ class PointRecordService {
       };
     });
 
-    // 4. Lakukan filter berdasarkan range hasil Agregasi Point (Having filter)
+
     if (minPoint !== undefined && !Number.isNaN(minPoint)) {
       recap = recap.filter((item) => item.total_point >= minPoint);
     }
@@ -65,7 +65,7 @@ class PointRecordService {
       recap = recap.filter((item) => item.total_point <= maxPoint);
     }
 
-    // 5. Pagination manual setelah data tersaring penuh
+
     const totalItems = recap.length;
     const totalPages = getAll ? 1 : Math.ceil(totalItems / limit);
 
@@ -80,7 +80,7 @@ class PointRecordService {
         ? {
           totalItems,
           totalPages,
-          currentpage: page, // Menggunakan huruf kecil 'currentpage' sesuai pembacaan di React
+          currentpage: page, 
           itemsPerPage: limit,
         }
         : null,

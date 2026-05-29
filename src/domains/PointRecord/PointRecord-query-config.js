@@ -6,7 +6,6 @@ const pointRecordQueryConfig = {
     "attendance.users.employee_number",
   ],
 
-  // equality filter yang native dari buildQueryOptions
   filterableFields: ["attendanceId"],
 
   orderableFields: ["id", "point", "created_at", "updated_at"],

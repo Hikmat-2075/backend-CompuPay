@@ -11,7 +11,6 @@ class PointRecordRoutes extends BaseRoutes {
       tryCatch(PointRecordController.list),
     ]);
 
-    // ini GET by user id (bukan pointRecord id)
     this.router.get("/:id", [
       authTokenMiddleware.authenticate,
       tryCatch(PointRecordController.detail),
