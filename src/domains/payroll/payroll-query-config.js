@@ -1,33 +1,38 @@
 const payrollQueryConfig = {
-    searchableFields: ["ref_no", "type", "status"],
+  searchableFields: [
+    "ref_no",
+    "type",
+    "status",
+    "employee.full_name",
+    "employee.email",
+  ],
 
-    filterableFields: ["ref_no", "type", "status"],
+  filterableFields: ["ref_no", "type", "status", "user_id"],
 
-    orderableFields: [
-        "id",
-        "ref_no",
-        "date_from",
-        "date_to",
-        "type",
-        "status",
-        "present",
-        "absent",
-        "late",
-        "salary",
-        "allowance_amount",
-        "deductions",
-        "net"
-    ],
+  orderableFields: [
+    "id",
+    "ref_no",
+    "date_from",
+    "date_to",
+    "type",
+    "status",
+    "salary",
+    "allowance_amount",
+    "deductions",
+    "net",
+    "created_at",
+    "updated_at",
+  ],
 
-    relations: {
-        payer: true,
-        employee: true,
-    },
+  relations: {
+    payer: true,
+    employee: true,
+  },
 
-    dateFields: {
-        date_from: "Payroll date period from",
-        date_to: "Payroll date period to",
-    },
+  dateFields: {
+    created_at: "created_at",
+    updated_at: "updated_at",
+  },
 };
 
 export default payrollQueryConfig;

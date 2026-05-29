@@ -9,18 +9,23 @@ class PayrollController {
 
   async list(req, res) {
     const query = req.query;
-    const result = await payrollService.list({ query });
+    const currentUser = req.user;
+
+    const result = await payrollService.list({
+      currentUser,
+      query,
+    });
 
     return successResponse(
       res,
       result.data,
       "Payroll retrived successfully",
-      result.meta
+      result.meta,
     );
   }
 
   async detail(req, res) {
-    const result = await payrollService.detail(req.params.id);
+    const result = await payrollService.detail(req.user, req.params.id);
     return successResponse(res, result);
   }
 
@@ -28,7 +33,7 @@ class PayrollController {
     const result = await payrollService.update(
       req.user,
       req.params.id,
-      req.body
+      req.body,
     );
     return successResponse(res, result);
   }
@@ -50,7 +55,7 @@ class PayrollController {
       res,
       result.data,
       "Payroll retrived successfully",
-      result.meta
+      result.meta,
     );
   }
 }
