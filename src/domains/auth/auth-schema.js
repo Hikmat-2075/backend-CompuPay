@@ -5,20 +5,20 @@ const loginSchema = Joi.object({
 		"string.empty": "Email is required.",
 	}),
 	password: Joi.string().required().messages({
-		"string.empty": "Password is required.",	
+		"string.empty": "Password is required.",
 	}),
 });
 
 const registerSchema = Joi.object({
 	first_name: Joi.string().required().messages({
-		"string.empty": "First name is required."
+		"string.empty": "First name is required.",
 	}),
 	last_name: Joi.string().required().messages({
-		"string.empty": "Last name is required."
+		"string.empty": "Last name is required.",
 	}),
 	email: Joi.string().email().required().messages({
 		"string.empty": "Email is required.",
-		"string.email": "Email must be a valid email address."
+		"string.email": "Email must be a valid email address.",
 	}),
 	password: Joi.string()
 		.min(8)
@@ -27,18 +27,17 @@ const registerSchema = Joi.object({
 		.messages({
 			"string.empty": "Password is required.",
 			"string.min": "Password must be at least 8 characters long.",
-			"string.pattern.base": "Password must be at least 8 characters long, contain 1 uppercase letter, and 1 special character."
-    }),
+			"string.pattern.base":
+				"Password must be at least 8 characters long, contain 1 uppercase letter, and 1 special character.",
+		}),
 	password_confirmation: Joi.string()
 		.valid(Joi.ref("password"))
 		.required()
 		.messages({
 			"string.empty": "Password confirmation is required.",
-			"any.only": "Password confirmation does not match password."
-    }),
-	role: Joi.string()
-		.valid("ADMIN", "EMPLOYEE", "SUPER_ADMIN")
-		.default("ADMIN"),
+			"any.only": "Password confirmation does not match password.",
+		}),
+	role: Joi.string().valid("ADMIN", "EMPLOYEE", "SUPER_ADMIN").default("ADMIN"),
 });
 
 const forgetPasswordSchema = Joi.object({
@@ -88,7 +87,6 @@ const resetPasswordSchema = Joi.object({
 			"any.only": "Password confirmation does not match new password.",
 		}),
 });
-
 
 const refreshTokenSchema = Joi.object({
 	refresh_token: Joi.string().required().messages({

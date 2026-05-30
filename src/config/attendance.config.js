@@ -1,0 +1,5 @@
+export const ATTENDANCE_CONFIG = {
+	OFFICE_LAT: -6.9888375,
+	OFFICE_LNG: 107.0277444,
+	MAX_RADIUS: 100, // meter
+};

@@ -1,22 +1,18 @@
 const attendanceQueryConfig = {
-    searchableFields: ["type", "status"],
+	searchableFields: ["type", "status"],
 
-    filterableFields: ["employeeId", "type", "status"],
+	filterableFields: ["employeeId", "type", "status"],
 
-    orderableFields: [
-        "datetime_log",
-        "created_at",
-        "status"
-    ],
+	orderableFields: ["datetime_log", "created_at", "status"],
 
-    relations: {
-        employee: true
-    },
+	relations: {
+		employee: true,
+	},
 
-    dateFields: {
-        datetime_log: true,
-        created_at: true
-    },
+	dateFields: {
+		datetime_log: true,
+		created_at: true,
+	},
 };
 
 export default attendanceQueryConfig;

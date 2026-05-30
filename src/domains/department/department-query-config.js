@@ -1,19 +1,16 @@
 const departmentQueryConfig = {
-    searchableFields: ["name"],
+	searchableFields: ["name"],
 
-    filterableFields: ["name"],
+	filterableFields: ["name"],
 
-    orderableFields: [
-        "id",
-        "name"
-    ],
+	orderableFields: ["id", "name"],
 
-    relations: {
-        users  : true,
-        positions: true
-    },
+	relations: {
+		users: true,
+		positions: true,
+	},
 
-    dateFields: {}, // Tidak ada field tanggal di model Department
+	dateFields: {}, // Tidak ada field tanggal di model Department
 };
 
 export default departmentQueryConfig;

@@ -1,25 +1,19 @@
 const positionQueryConfig = {
-    searchableFields: ["name"],
+	searchableFields: ["name"],
 
-    filterableFields: ["name", "departmentId"],
+	filterableFields: ["name", "departmentId"],
 
-    orderableFields: [
-        "id",
-        "name",
-        "departmentId",
-        "created_at",
-        "updated_at"
-    ],
+	orderableFields: ["id", "name", "departmentId", "created_at", "updated_at"],
 
-    relations: {
-        department: true,
-        users: true,
-    },
+	relations: {
+		department: true,
+		users: true,
+	},
 
-    dateFields: {
-        created_at: true,
-        updated_at: true
-    }
+	dateFields: {
+		created_at: true,
+		updated_at: true,
+	},
 };
 
 export default positionQueryConfig;

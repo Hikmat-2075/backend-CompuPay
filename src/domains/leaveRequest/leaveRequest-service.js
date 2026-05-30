@@ -4,299 +4,317 @@ import fs from "fs";
 import path from "path";
 
 class LeaverequestService {
-    constructor() {
-        this.prisma = new PrismaService();
-    }
+	constructor() {
+		this.prisma = new PrismaService();
+	}
 
-    isAdmin(currentUser) {
-        return currentUser.role === "ADMIN" || currentUser.role === "SUPER_ADMIN";
-    }
+	isAdmin(currentUser) {
+		return currentUser.role === "ADMIN" || currentUser.role === "SUPER_ADMIN";
+	}
 
-    saveAttachment(file) {
-        const uploadsDir = path.join(process.cwd(), "public/assets/leave-requests");
-        if (!fs.existsSync(uploadsDir)) {
-            fs.mkdirSync(uploadsDir, { recursive: true });
-        }
+	saveAttachment(file) {
+		const uploadsDir = path.join(process.cwd(), "public/assets/leave-requests");
+		if (!fs.existsSync(uploadsDir)) {
+			fs.mkdirSync(uploadsDir, { recursive: true });
+		}
 
-        const today = new Date();
-        const dateFormat = today.toISOString().split("T")[0]; // Format: YYYY-MM-DD
-        const ext = path.extname(file.originalname); // Ambil extension file
-        const filename = `${dateFormat}${ext}`;
-        const filepath = path.join(uploadsDir, filename);
+		const today = new Date();
+		const dateFormat = today.toISOString().split("T")[0]; // Format: YYYY-MM-DD
+		const ext = path.extname(file.originalname); // Ambil extension file
+		const filename = `${dateFormat}${ext}`;
+		const filepath = path.join(uploadsDir, filename);
 
-        fs.writeFileSync(filepath, file.buffer);
+		fs.writeFileSync(filepath, file.buffer);
 
-        return `assets/leave-requests/${filename}`;
-    }
+		return `assets/leave-requests/${filename}`;
+	}
 
-    async create(currentUser, data, file) {
-        if (!data) {
-            throw BaseError.badRequest("Request body is required");
-        }
+	async create(currentUser, data, file) {
+		if (!data) {
+			throw BaseError.badRequest("Request body is required");
+		}
 
-        if (file) {
-            data.attachment = this.saveAttachment(file);
-        }
+		if (file) {
+			data.attachment = this.saveAttachment(file);
+		}
 
-        const startDate = new Date(data.startDate);
-        const endDate = new Date(data.endDate);
+		const startDate = new Date(data.startDate);
+		const endDate = new Date(data.endDate);
 
-        if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-            throw BaseError.badRequest("Invalid startDate or endDate");
-        }
+		if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+			throw BaseError.badRequest("Invalid startDate or endDate");
+		}
 
-        if (endDate < startDate) {
-            throw BaseError.badRequest("endDate must be greater than or equal to startDate");
-        }
+		if (endDate < startDate) {
+			throw BaseError.badRequest(
+				"endDate must be greater than or equal to startDate",
+			);
+		}
 
-        return this.prisma.$transaction(async (tx) => {
-            const overlap = await tx.leaveRequest.findFirst({
-                where: {
-                    user_id: currentUser.id,
-                    status: { in: ["PENDING", "APPROVED"] },
-                    startDate: { lte: endDate },
-                    endDate: { gte: startDate },
-                },
-            });
+		return this.prisma.$transaction(async (tx) => {
+			const overlap = await tx.leaveRequest.findFirst({
+				where: {
+					user_id: currentUser.id,
+					status: { in: ["PENDING", "APPROVED"] },
+					startDate: { lte: endDate },
+					endDate: { gte: startDate },
+				},
+			});
 
-            if (overlap) {
-                throw BaseError.badRequest("Date range overlaps with an existing leave request");
-            }
+			if (overlap) {
+				throw BaseError.badRequest(
+					"Date range overlaps with an existing leave request",
+				);
+			}
 
-            const created = await tx.leaveRequest.create({
-                data: {
-                    user_id: currentUser.id,
-                    type: data.type,
-                    startDate,
-                    endDate,
-                    reason: data.reason,
-                    attachment: data.attachment,
-                    status: "PENDING",
-                },
-                include: {
-                    users: {
-                        select: {
-                            id: true,
-                            employee_number: true,
-                            full_name: true,
-                            email: true,
-                            role: true,
-                        },
-                    },
-                },
-            });
+			const created = await tx.leaveRequest.create({
+				data: {
+					user_id: currentUser.id,
+					type: data.type,
+					startDate,
+					endDate,
+					reason: data.reason,
+					attachment: data.attachment,
+					status: "PENDING",
+				},
+				include: {
+					users: {
+						select: {
+							id: true,
+							employee_number: true,
+							full_name: true,
+							email: true,
+							role: true,
+						},
+					},
+				},
+			});
 
-            return created;
-        });
-    }
+			return created;
+		});
+	}
 
-    async list(currentUser, { query } = {}) {
-        const page = Math.max(1, Number(query?.page ?? 1));
-        const limit = Math.max(1, Number(query?.limit ?? 10));
-        const getAll = query?.get_all === true || query?.get_all === "true";
+	async list(currentUser, { query } = {}) {
+		const page = Math.max(1, Number(query?.page ?? 1));
+		const limit = Math.max(1, Number(query?.limit ?? 10));
+		const getAll = query?.get_all === true || query?.get_all === "true";
 
-        const where = {};
+		const where = {};
 
-        if (!this.isAdmin(currentUser)) {
-            where.user_id = currentUser.id;
-        }
+		if (!this.isAdmin(currentUser)) {
+			where.user_id = currentUser.id;
+		}
 
-        if (query?.type) {
-            where.type = query.type;
-        }
+		if (query?.type) {
+			where.type = query.type;
+		}
 
-        if (query?.status) {
-            where.status = query.status;
-        }
+		if (query?.status) {
+			where.status = query.status;
+		}
 
-        if (this.isAdmin(currentUser) && query?.user_id) {
-            where.user_id = query.user_id;
-        }
+		if (this.isAdmin(currentUser) && query?.user_id) {
+			where.user_id = query.user_id;
+		}
 
-        if (query?.search) {
-            where.reason = {
-                contains: String(query.search),
-                mode: "insensitive",
-            };
-        }
+		if (query?.search) {
+			where.reason = {
+				contains: String(query.search),
+				mode: "insensitive",
+			};
+		}
 
-        const options = {
-            where,
-            orderBy: { created_at: "desc" },
-            include: {
-                users: {
-                    select: {
-                        id: true,
-                        employee_number: true,
-                        full_name: true,
-                        email: true,
-                        role: true,
-                    },
-                },
-            },
-            ...(getAll ? {} : { take: limit, skip: (page - 1) * limit }),
-        };
+		const options = {
+			where,
+			orderBy: { created_at: "desc" },
+			include: {
+				users: {
+					select: {
+						id: true,
+						employee_number: true,
+						full_name: true,
+						email: true,
+						role: true,
+					},
+				},
+			},
+			...(getAll ? {} : { take: limit, skip: (page - 1) * limit }),
+		};
 
-        const [data, count] = await Promise.all([
-            this.prisma.leaveRequest.findMany(options),
-            this.prisma.leaveRequest.count({ where }),
-        ]);
+		const [data, count] = await Promise.all([
+			this.prisma.leaveRequest.findMany(options),
+			this.prisma.leaveRequest.count({ where }),
+		]);
 
-        return {
-            data,
-            meta: getAll
-                ? null
-                : {
-                    totalItems: count,
-                    totalPages: Math.ceil(count / limit),
-                    currentpage: page,
-                    itemsPerPage: limit,
-                },
-        };
-    }
+		return {
+			data,
+			meta: getAll
+				? null
+				: {
+						totalItems: count,
+						totalPages: Math.ceil(count / limit),
+						currentpage: page,
+						itemsPerPage: limit,
+					},
+		};
+	}
 
-    async detail(currentUser, id) {
-        const leaveRequest = await this.prisma.leaveRequest.findUnique({
-            where: { id },
-            include: {
-                users: {
-                    select: {
-                        id: true,
-                        employee_number: true,
-                        full_name: true,
-                        email: true,
-                        role: true,
-                    },
-                },
-            },
-        });
+	async detail(currentUser, id) {
+		const leaveRequest = await this.prisma.leaveRequest.findUnique({
+			where: { id },
+			include: {
+				users: {
+					select: {
+						id: true,
+						employee_number: true,
+						full_name: true,
+						email: true,
+						role: true,
+					},
+				},
+			},
+		});
 
-        if (!leaveRequest) {
-            throw BaseError.notFound("Leave request not found");
-        }
+		if (!leaveRequest) {
+			throw BaseError.notFound("Leave request not found");
+		}
 
-        if (!this.isAdmin(currentUser) && leaveRequest.user_id !== currentUser.id) {
-            throw BaseError.forbidden("Forbidden to access this leave request");
-        }
+		if (!this.isAdmin(currentUser) && leaveRequest.user_id !== currentUser.id) {
+			throw BaseError.forbidden("Forbidden to access this leave request");
+		}
 
-        return leaveRequest;
-    }
+		return leaveRequest;
+	}
 
-    async update(currentUser, id, data, file) {
-        return this.prisma.$transaction(async (tx) => {
-            const current = await tx.leaveRequest.findUnique({ where: { id } });
+	async update(currentUser, id, data, file) {
+		return this.prisma.$transaction(async (tx) => {
+			const current = await tx.leaveRequest.findUnique({ where: { id } });
 
-            if (!current) {
-                throw BaseError.notFound("Leave request not found");
-            }
+			if (!current) {
+				throw BaseError.notFound("Leave request not found");
+			}
 
-            const admin = this.isAdmin(currentUser);
+			const admin = this.isAdmin(currentUser);
 
-            if (!admin && current.user_id !== currentUser.id) {
-                throw BaseError.forbidden("Forbidden to update this leave request");
-            }
+			if (!admin && current.user_id !== currentUser.id) {
+				throw BaseError.forbidden("Forbidden to update this leave request");
+			}
 
-            if (!admin && current.status !== "PENDING") {
-                throw BaseError.badRequest("Only pending leave request can be updated");
-            }
+			if (!admin && current.status !== "PENDING") {
+				throw BaseError.badRequest("Only pending leave request can be updated");
+			}
 
-            if (!admin && data.status) {
-                throw BaseError.forbidden("Only admin can change leave request status");
-            }
+			if (!admin && data.status) {
+				throw BaseError.forbidden("Only admin can change leave request status");
+			}
 
-            if (file) {
-                data.attachment = this.saveAttachment(file);
+			if (file) {
+				data.attachment = this.saveAttachment(file);
 
-                if (current.attachment) {
-                    const oldPath = path.join(process.cwd(), "public", current.attachment);
-                    if (fs.existsSync(oldPath)) {
-                        fs.unlinkSync(oldPath);
-                    }
-                }
-            }
+				if (current.attachment) {
+					const oldPath = path.join(
+						process.cwd(),
+						"public",
+						current.attachment,
+					);
+					if (fs.existsSync(oldPath)) {
+						fs.unlinkSync(oldPath);
+					}
+				}
+			}
 
-            const nextStartDate = data.startDate ? new Date(data.startDate) : current.startDate;
-            const nextEndDate = data.endDate ? new Date(data.endDate) : current.endDate;
+			const nextStartDate = data.startDate
+				? new Date(data.startDate)
+				: current.startDate;
+			const nextEndDate = data.endDate
+				? new Date(data.endDate)
+				: current.endDate;
 
-            if (
-                Number.isNaN(nextStartDate.getTime()) ||
-                Number.isNaN(nextEndDate.getTime())
-            ) {
-                throw BaseError.badRequest("Invalid startDate or endDate");
-            }
+			if (
+				Number.isNaN(nextStartDate.getTime()) ||
+				Number.isNaN(nextEndDate.getTime())
+			) {
+				throw BaseError.badRequest("Invalid startDate or endDate");
+			}
 
-            if (nextEndDate < nextStartDate) {
-                throw BaseError.badRequest("endDate must be greater than or equal to startDate");
-            }
+			if (nextEndDate < nextStartDate) {
+				throw BaseError.badRequest(
+					"endDate must be greater than or equal to startDate",
+				);
+			}
 
-            const overlap = await tx.leaveRequest.findFirst({
-                where: {
-                    id: { not: id },
-                    user_id: current.user_id,
-                    status: { in: ["PENDING", "APPROVED"] },
-                    startDate: { lte: nextEndDate },
-                    endDate: { gte: nextStartDate },
-                },
-            });
+			const overlap = await tx.leaveRequest.findFirst({
+				where: {
+					id: { not: id },
+					user_id: current.user_id,
+					status: { in: ["PENDING", "APPROVED"] },
+					startDate: { lte: nextEndDate },
+					endDate: { gte: nextStartDate },
+				},
+			});
 
-            if (overlap) {
-                throw BaseError.badRequest("Date range overlaps with an existing leave request");
-            }
+			if (overlap) {
+				throw BaseError.badRequest(
+					"Date range overlaps with an existing leave request",
+				);
+			}
 
-            const payload = {
-                ...(data.type !== undefined ? { type: data.type } : {}),
-                ...(data.reason !== undefined ? { reason: data.reason } : {}),
-                ...(data.attachment !== undefined ? { attachment: data.attachment } : {}),
-                ...(data.startDate !== undefined ? { startDate: nextStartDate } : {}),
-                ...(data.endDate !== undefined ? { endDate: nextEndDate } : {}),
-                ...(admin && data.status !== undefined ? { status: data.status } : {}),
-            };
+			const payload = {
+				...(data.type !== undefined ? { type: data.type } : {}),
+				...(data.reason !== undefined ? { reason: data.reason } : {}),
+				...(data.attachment !== undefined
+					? { attachment: data.attachment }
+					: {}),
+				...(data.startDate !== undefined ? { startDate: nextStartDate } : {}),
+				...(data.endDate !== undefined ? { endDate: nextEndDate } : {}),
+				...(admin && data.status !== undefined ? { status: data.status } : {}),
+			};
 
-            const updated = await tx.leaveRequest.update({
-                where: { id },
-                data: payload,
-                include: {
-                    users: {
-                        select: {
-                            id: true,
-                            employee_number: true,
-                            full_name: true,
-                            email: true,
-                            role: true,
-                        },
-                    },
-                },
-            });
+			const updated = await tx.leaveRequest.update({
+				where: { id },
+				data: payload,
+				include: {
+					users: {
+						select: {
+							id: true,
+							employee_number: true,
+							full_name: true,
+							email: true,
+							role: true,
+						},
+					},
+				},
+			});
 
-            return updated;
-        });
-    }
+			return updated;
+		});
+	}
 
-    async remove(currentUser, id) {
-        return this.prisma.$transaction(async (tx) => {
-            const current = await tx.leaveRequest.findUnique({ where: { id } });
+	async remove(currentUser, id) {
+		return this.prisma.$transaction(async (tx) => {
+			const current = await tx.leaveRequest.findUnique({ where: { id } });
 
-            if (!current) {
-                throw BaseError.notFound("Leave request not found");
-            }
+			if (!current) {
+				throw BaseError.notFound("Leave request not found");
+			}
 
-            const admin = this.isAdmin(currentUser);
+			const admin = this.isAdmin(currentUser);
 
-            if (!admin && current.user_id !== currentUser.id) {
-                throw BaseError.forbidden("Forbidden to remove this leave request");
-            }
+			if (!admin && current.user_id !== currentUser.id) {
+				throw BaseError.forbidden("Forbidden to remove this leave request");
+			}
 
-            if (!admin && current.status !== "PENDING") {
-                throw BaseError.badRequest("Only pending leave request can be removed");
-            }
+			if (!admin && current.status !== "PENDING") {
+				throw BaseError.badRequest("Only pending leave request can be removed");
+			}
 
-            await tx.leaveRequest.delete({ where: { id } });
+			await tx.leaveRequest.delete({ where: { id } });
 
-            return {
-                message: "Leave request deleted successfully",
-            };
-        });
-    }
+			return {
+				message: "Leave request deleted successfully",
+			};
+		});
+	}
 }
 
 export default new LeaverequestService();

@@ -6,264 +6,264 @@ import payrollQueryConfig from "./payroll-query-config.js";
 import Joi from "joi";
 
 class PayrollService {
-  constructor() {
-    this.prisma = new PrismaService();
-  }
+	constructor() {
+		this.prisma = new PrismaService();
+	}
 
-  async create(currentUser, data) {
-    let validation = "";
-    const stack = [];
+	async create(currentUser, data) {
+		let validation = "";
+		const stack = [];
 
-    const fail = (msg, path) => {
-      validation += (validation ? " " : "") + msg;
-      stack.push({ message: msg, path: [path] });
-    };
+		const fail = (msg, path) => {
+			validation += (validation ? " " : "") + msg;
+			stack.push({ message: msg, path: [path] });
+		};
 
-    // 🔐 Authorization
-    if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
-      fail("Forbidden, only ADMIN can create Payroll", "role");
-      throw new Joi.ValidationError(validation, stack);
-    }
+		// 🔐 Authorization
+		if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
+			fail("Forbidden, only ADMIN can create Payroll", "role");
+			throw new Joi.ValidationError(validation, stack);
+		}
 
-    const dateFrom = new Date(data.date_from);
-    const dateTo = new Date(data.date_to);
+		const dateFrom = new Date(data.date_from);
+		const dateTo = new Date(data.date_to);
 
-    if (dateFrom > dateTo) {
-      fail("date_from cannot be greater than date_to", "date_from");
-      throw new Joi.ValidationError(validation, stack);
-    }
+		if (dateFrom > dateTo) {
+			fail("date_from cannot be greater than date_to", "date_from");
+			throw new Joi.ValidationError(validation, stack);
+		}
 
-    return this.prisma.$transaction(async (tx) => {
-      // 🔎 Unique payroll per user + period + type
-      const existingPayroll = await tx.payroll.findFirst({
-        where: {
-          user_id: data.user_id,
-          date_from: dateFrom,
-          date_to: dateTo,
-          type: data.type,
-        },
-      });
+		return this.prisma.$transaction(async (tx) => {
+			// 🔎 Unique payroll per user + period + type
+			const existingPayroll = await tx.payroll.findFirst({
+				where: {
+					user_id: data.user_id,
+					date_from: dateFrom,
+					date_to: dateTo,
+					type: data.type,
+				},
+			});
 
-      if (existingPayroll) {
-        fail("Payroll for this period already exists", "period");
-        throw new Joi.ValidationError(validation, stack);
-      }
+			if (existingPayroll) {
+				fail("Payroll for this period already exists", "period");
+				throw new Joi.ValidationError(validation, stack);
+			}
 
-      // 🔎 Unique ref_no
-      const refExist = await tx.payroll.findFirst({
-        where: { ref_no: data.ref_no },
-      });
+			// 🔎 Unique ref_no
+			const refExist = await tx.payroll.findFirst({
+				where: { ref_no: data.ref_no },
+			});
 
-      if (refExist) {
-        fail("Reference number already exists", "ref_no");
-        throw new Joi.ValidationError(validation, stack);
-      }
+			if (refExist) {
+				fail("Reference number already exists", "ref_no");
+				throw new Joi.ValidationError(validation, stack);
+			}
 
-      // 👤 Employee
-      const employee = await tx.user.findUnique({
-        where: { id: data.user_id },
-      });
+			// 👤 Employee
+			const employee = await tx.user.findUnique({
+				where: { id: data.user_id },
+			});
 
-      if (!employee) {
-        fail("Employee not found", "user_id");
-        throw new Joi.ValidationError(validation, stack);
-      }
+			if (!employee) {
+				fail("Employee not found", "user_id");
+				throw new Joi.ValidationError(validation, stack);
+			}
 
-      // 💰 Base salary (snapshot)
-      const salary = new Prisma.Decimal(employee.salary);
+			// 💰 Base salary (snapshot)
+			const salary = new Prisma.Decimal(employee.salary);
 
-      // =========================
-      // ➕ ALLOWANCES
-      // =========================
-      const allowancesRaw = await tx.employeeAllowances.findMany({
-        where: {
-          user_id: employee.id,
-          effective_date: {
-            gte: dateFrom,
-            lte: dateTo,
-          },
-        },
-      });
+			// =========================
+			// ➕ ALLOWANCES
+			// =========================
+			const allowancesRaw = await tx.employeeAllowances.findMany({
+				where: {
+					user_id: employee.id,
+					effective_date: {
+						gte: dateFrom,
+						lte: dateTo,
+					},
+				},
+			});
 
-      const allowancesFiltered = allowancesRaw.filter((a) => {
-        if (a.type === "ONCE") return true;
-        if (a.type === "MONTHLY") return true;
-        if (a.type === "SEMI_MONTHLY") return data.type === "SEMI_MONTHLY";
-        return false;
-      });
+			const allowancesFiltered = allowancesRaw.filter((a) => {
+				if (a.type === "ONCE") return true;
+				if (a.type === "MONTHLY") return true;
+				if (a.type === "SEMI_MONTHLY") return data.type === "SEMI_MONTHLY";
+				return false;
+			});
 
-      const allowanceAmount = allowancesFiltered.reduce(
-        (total, a) => total.plus(a.amount),
-        new Prisma.Decimal(0),
-      );
+			const allowanceAmount = allowancesFiltered.reduce(
+				(total, a) => total.plus(a.amount),
+				new Prisma.Decimal(0),
+			);
 
-      // =========================
-      // ➖ DEDUCTIONS
-      // =========================
-      const deductionsRaw = await tx.employeeDeductions.findMany({
-        where: {
-          user_id: employee.id,
-          effective_date: {
-            gte: dateFrom,
-            lte: dateTo,
-          },
-        },
-      });
+			// =========================
+			// ➖ DEDUCTIONS
+			// =========================
+			const deductionsRaw = await tx.employeeDeductions.findMany({
+				where: {
+					user_id: employee.id,
+					effective_date: {
+						gte: dateFrom,
+						lte: dateTo,
+					},
+				},
+			});
 
-      const deductionsFiltered = deductionsRaw.filter((d) => {
-        if (d.type === "ONCE") return true;
-        if (d.type === "MONTHLY") return true;
-        if (d.type === "SEMI_MONTHLY") return data.type === "SEMI_MONTHLY";
-        return false;
-      });
+			const deductionsFiltered = deductionsRaw.filter((d) => {
+				if (d.type === "ONCE") return true;
+				if (d.type === "MONTHLY") return true;
+				if (d.type === "SEMI_MONTHLY") return data.type === "SEMI_MONTHLY";
+				return false;
+			});
 
-      const deductionAmount = deductionsFiltered.reduce(
-        (total, d) => total.plus(d.amount),
-        new Prisma.Decimal(0),
-      );
+			const deductionAmount = deductionsFiltered.reduce(
+				(total, d) => total.plus(d.amount),
+				new Prisma.Decimal(0),
+			);
 
-      // =========================
-      // 🧮 NET SALARY
-      // =========================
-      const net = salary.plus(allowanceAmount).minus(deductionAmount);
+			// =========================
+			// 🧮 NET SALARY
+			// =========================
+			const net = salary.plus(allowanceAmount).minus(deductionAmount);
 
-      // =========================
-      // 📝 CREATE PAYROLL
-      // =========================
-      const payroll = await tx.payroll.create({
-        data: {
-          ref_no: data.ref_no,
-          user_id: employee.id,
+			// =========================
+			// 📝 CREATE PAYROLL
+			// =========================
+			const payroll = await tx.payroll.create({
+				data: {
+					ref_no: data.ref_no,
+					user_id: employee.id,
 
-          date_from: dateFrom,
-          date_to: dateTo,
+					date_from: dateFrom,
+					date_to: dateTo,
 
-          type: data.type,
-          status: "PENDING",
+					type: data.type,
+					status: "PENDING",
 
-          salary: Number(salary),
-          allowance_amount: Number(allowanceAmount),
-          deductions: Number(deductionAmount),
-          net,
-        },
-      });
+					salary: Number(salary),
+					allowance_amount: Number(allowanceAmount),
+					deductions: Number(deductionAmount),
+					net,
+				},
+			});
 
-      return tx.payroll.findUnique({
-        where: { id: payroll.id },
-        include: payrollQueryConfig.relations,
-      });
-    });
-  }
+			return tx.payroll.findUnique({
+				where: { id: payroll.id },
+				include: payrollQueryConfig.relations,
+			});
+		});
+	}
 
-  async detail(currentUser, id) {
-    const payroll = await this.prisma.payroll.findUnique({
-      where: { id },
-      include: payrollQueryConfig.relations,
-    });
+	async detail(currentUser, id) {
+		const payroll = await this.prisma.payroll.findUnique({
+			where: { id },
+			include: payrollQueryConfig.relations,
+		});
 
-    if (!payroll) throw BaseError.notFound("Payroll not found");
+		if (!payroll) throw BaseError.notFound("Payroll not found");
 
-    if (currentUser.role === "USER" && payroll.user_id !== currentUser.id) {
-      throw BaseError.forbidden("You can only view your own payroll");
-    }
+		if (currentUser.role === "USER" && payroll.user_id !== currentUser.id) {
+			throw BaseError.forbidden("You can only view your own payroll");
+		}
 
-    return payroll;
-  }
+		return payroll;
+	}
 
-  async list({ currentUser, query } = {}) {
-    const fixedWhere = {};
+	async list({ currentUser, query } = {}) {
+		const fixedWhere = {};
 
-    if (currentUser.role === "USER") {
-      fixedWhere.user_id = currentUser.id;
-    }
+		if (currentUser.role === "USER") {
+			fixedWhere.user_id = currentUser.id;
+		}
 
-    const options = buildQueryOptions(payrollQueryConfig, query, fixedWhere);
+		const options = buildQueryOptions(payrollQueryConfig, query, fixedWhere);
 
-    options.include = {
-      ...options.include,
-      employee: true,
-      payer: true,
-    };
+		options.include = {
+			...options.include,
+			employee: true,
+			payer: true,
+		};
 
-    const [data, count] = await Promise.all([
-      this.prisma.payroll.findMany(options),
-      this.prisma.payroll.count({ where: options.where }),
-    ]);
+		const [data, count] = await Promise.all([
+			this.prisma.payroll.findMany(options),
+			this.prisma.payroll.count({ where: options.where }),
+		]);
 
-    const page = query?.pagination?.page ?? 1;
-    const limit = query?.pagination?.limit ?? 10;
-    const hasPagination = !!(query?.pagination && !query?.get_all);
-    const totalPages = hasPagination ? Math.ceil(count / limit) : 1;
+		const page = query?.pagination?.page ?? 1;
+		const limit = query?.pagination?.limit ?? 10;
+		const hasPagination = !!(query?.pagination && !query?.get_all);
+		const totalPages = hasPagination ? Math.ceil(count / limit) : 1;
 
-    return {
-      data,
-      meta: hasPagination
-        ? {
-            totalItems: count,
-            totalPages,
-            currentPage: Number(page),
-            itemsPerPage: Number(limit),
-          }
-        : null,
-    };
-  }
+		return {
+			data,
+			meta: hasPagination
+				? {
+						totalItems: count,
+						totalPages,
+						currentPage: Number(page),
+						itemsPerPage: Number(limit),
+					}
+				: null,
+		};
+	}
 
-  async update(currentUser, id, data) {
-    if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
-      throw BaseError.forbidden("Only ADMIN can update payroll");
-    }
+	async update(currentUser, id, data) {
+		if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
+			throw BaseError.forbidden("Only ADMIN can update payroll");
+		}
 
-    return this.prisma.$transaction(async (tx) => {
-      const payroll = await tx.payroll.findUnique({ where: { id } });
-      if (!payroll) throw BaseError.notFound("Payroll not found");
+		return this.prisma.$transaction(async (tx) => {
+			const payroll = await tx.payroll.findUnique({ where: { id } });
+			if (!payroll) throw BaseError.notFound("Payroll not found");
 
-      if (payroll.status !== "PENDING") {
-        throw BaseError.badRequest(
-          "Only payroll with PENDING status can be updated",
-        );
-      }
+			if (payroll.status !== "PENDING") {
+				throw BaseError.badRequest(
+					"Only payroll with PENDING status can be updated",
+				);
+			}
 
-      // // 🚫 Jangan izinkan edit ref_no, salary, dll
-      // if (data.status && data.status !== "CANCELLED") {
-      //   throw BaseError.badRequest(
-      //     "Only status CANCELLED is allowed via update"
-      //   );
-      // }
+			// // 🚫 Jangan izinkan edit ref_no, salary, dll
+			// if (data.status && data.status !== "CANCELLED") {
+			//   throw BaseError.badRequest(
+			//     "Only status CANCELLED is allowed via update"
+			//   );
+			// }
 
-      const updated = await tx.payroll.update({
-        where: { id },
-        data: {
-          status: "PAID",
-        },
-      });
+			const updated = await tx.payroll.update({
+				where: { id },
+				data: {
+					status: "PAID",
+				},
+			});
 
-      return tx.payroll.findUnique({
-        where: { id: updated.id },
-        include: payrollQueryConfig.relations,
-      });
-    });
-  }
+			return tx.payroll.findUnique({
+				where: { id: updated.id },
+				include: payrollQueryConfig.relations,
+			});
+		});
+	}
 
-  async remove(currentUser, id) {
-    if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
-      throw BaseError.forbidden("Only ADMIN can delete Payroll");
-    }
+	async remove(currentUser, id) {
+		if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
+			throw BaseError.forbidden("Only ADMIN can delete Payroll");
+		}
 
-    return this.prisma.$transaction(async (tx) => {
-      const payroll = await tx.payroll.findUnique({ where: { id } });
-      if (!payroll) throw BaseError.notFound("Payroll not found");
+		return this.prisma.$transaction(async (tx) => {
+			const payroll = await tx.payroll.findUnique({ where: { id } });
+			if (!payroll) throw BaseError.notFound("Payroll not found");
 
-      // if (payroll.status !== "PENDING") {
-      //   throw BaseError.badRequest(
-      //     "Only payroll with PENDING status can be deleted"
-      //   );
-      // }
+			// if (payroll.status !== "PENDING") {
+			//   throw BaseError.badRequest(
+			//     "Only payroll with PENDING status can be deleted"
+			//   );
+			// }
 
-      await tx.payroll.delete({ where: { id } });
+			await tx.payroll.delete({ where: { id } });
 
-      return { message: "Payroll deleted successfully" };
-    });
-  }
+			return { message: "Payroll deleted successfully" };
+		});
+	}
 }
 
 export default new PayrollService();
