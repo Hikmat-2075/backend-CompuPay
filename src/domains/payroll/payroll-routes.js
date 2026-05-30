@@ -34,11 +34,6 @@ class PayrollRoutes extends BaseRoutes {
       authTokenMiddleware.authenticate,
       tryCatch(PayrollController.remove),
     ]);
-
-    this.router.get("/history/employee", [
-      authTokenMiddleware.authenticate,
-      tryCatch(PayrollController.histori),
-    ]);
   }
 }
 

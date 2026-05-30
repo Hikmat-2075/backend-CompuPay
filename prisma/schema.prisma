@@ -158,6 +158,8 @@ model Attendance {
 
   users      User     @relation(fields: [employeeId], references: [id])
 
+  pointRecord   PointRecord?
+
   @@index([employeeId, datetime_log])
   @@map("Attendance")
 }
@@ -272,3 +274,19 @@ model LeaveRequest {
 
   users   User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
+
+model PointRecord {
+  id           String     @id @default(uuid())
+
+  attendanceId String     @unique
+  attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+
+  point        Int
+
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
+
+  @@index([point])
+  @@map("PointRecord")
+}
+

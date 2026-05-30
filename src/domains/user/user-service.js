@@ -1,4 +1,5 @@
 import BaseError from "../../base_classes/base-error.js";
+import { hashPassword } from "../../utils/passwordConfig.js";
 import { PrismaService } from "../../common/services/prisma.service.js";
 import { buildQueryOptions } from "../../utils/buildQueryOptions.js";
 import userQueryConfig from "./user-query-config.js";
@@ -15,7 +16,7 @@ class UserService {
   async create(currentUser, data, file) {
     if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
       throw BaseError.forbidden(
-        "You do not have permission to create an admin"
+        "You do not have permission to create an admin",
       );
     }
 
@@ -79,7 +80,7 @@ class UserService {
       if (!position) {
         fail(
           "Position does not belong to the selected department",
-          "position_id"
+          "position_id",
         );
         throw new Joi.ValidationError(validation, stack);
       }
@@ -145,9 +146,10 @@ class UserService {
   async update(currentUser, id, data, file) {
     if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
       throw BaseError.forbidden(
-        "You do not have permission to create an admin"
+        "You do not have permission to create an admin",
       );
     }
+
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.user.findUnique({ where: { id } });
       if (!current) throw BaseError.notFound("User not found");
@@ -167,24 +169,20 @@ class UserService {
         const filename = Date.now() + "-" + file.originalname;
         const filepath = path.join(uploadsDir, filename);
 
-        // simpan file ke folder
         fs.writeFileSync(filepath, file.buffer);
 
-        // hapus file lama jika ada
         if (current.profile_uri) {
           const oldPath = path.join(
             process.cwd(),
             "public",
-            current.profile_uri
+            current.profile_uri,
           );
           if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
         }
 
-        // simpan path ke database (tanpa /public agar bisa diakses via static express)
         data.profile_uri = `assets/images/${filename}`;
       }
 
-      // Cek email hanya jika memang ada email dalam request
       if (data.email) {
         const emailExist = await tx.user.findFirst({
           where: {
@@ -208,6 +206,10 @@ class UserService {
       Object.keys(data).forEach((key) => {
         if (data[key] === "" || data[key] === null) delete data[key];
       });
+
+      if (data.password) {
+        data.password = await hashPassword(data.password);
+      }
 
       const updated = await tx.user.update({
         where: { id },
