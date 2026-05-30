@@ -5,279 +5,281 @@ import { PrismaService } from "../../common/services/prisma.service.js";
 import attendanceQueryConfig from "./attendance-query-config.js";
 import { buildQueryOptions } from "../../utils/buildQueryOptions.js";
 import { getDistance } from "../../utils/geo.js";
+import { ATTENDANCE_CONFIG } from "../../config/attendance.config.js";
 
 class AttendanceService {
-    constructor() {
-        this.prisma = new PrismaService();
-    }
+	constructor() {
+		this.prisma = new PrismaService();
+	}
 
-    async create(data, file) {
-        return this.prisma.$transaction(async (tx) => {
+	async create(data, file, type) {
+		return this.prisma.$transaction(async (tx) => {
+			if (!file) {
+				throw BaseError.badRequest("Photo is required");
+			}
 
-            if (file) {
-                const uploadDir = path.join(process.cwd(), "public/assets/attendance");
+			const uploadDir = path.join(process.cwd(), "public/assets/attendance");
 
-                if (!fs.existsSync(uploadDir)) {
-                    fs.mkdirSync(uploadDir, { recursive: true });
-                }
+			if (!fs.existsSync(uploadDir)) {
+				fs.mkdirSync(uploadDir, { recursive: true });
+			}
 
-                const filename = Date.now() + "-" + file.originalname;
-                const filepath = path.join(uploadDir, filename);
+			const filename = Date.now() + "-" + file.originalname;
+			const filepath = path.join(uploadDir, filename);
 
-                fs.writeFileSync(filepath, file.buffer);
+			fs.writeFileSync(filepath, file.buffer);
 
-                data.photo_url = `assets/attendance/${filename}`;
-            }
+			data.photo_url = `assets/attendance/${filename}`;
 
-           //const now = new Date();
+			let now;
 
-            // override input
-            //data.datetime_log = now;
+			if (data.datetime_log) {
+				now = new Date(data.datetime_log);
 
-            let now;
+				if (isNaN(now)) {
+					throw BaseError.badRequest("Invalid datetime format");
+				}
+			} else {
+				now = new Date();
+			}
 
-            if (data.datetime_log) {
-                now = new Date(data.datetime_log);
+			data.datetime_log = now;
+			data.type = type;
 
-                if (isNaN(now)) {
-                    throw BaseError.badRequest("Invalid datetime format");
-                }
-            } else {
-                now = new Date();
-            }
+			const startDay = new Date(now);
+			startDay.setHours(0, 0, 0, 0);
 
-            data.datetime_log = now;
+			const endDay = new Date(now);
+			endDay.setHours(23, 59, 59, 999);
 
-            const startDay = new Date(now);
-            startDay.setHours(0, 0, 0, 0);
+			const today = await tx.attendance.findMany({
+				where: {
+					employeeId: data.employeeId,
+					datetime_log: {
+						gte: startDay,
+						lt: endDay,
+					},
+				},
+			});
 
-            const endDay = new Date(now);
-            endDay.setHours(23, 59, 59, 999);
+			if (type === "CHECK_IN") {
+				if (today.find((a) => a.type === "CHECK_IN")) {
+					throw BaseError.badRequest("Already check-in today");
+				}
+			}
 
-            const today = await tx.attendance.findMany({
-                where: {
-                    employeeId: data.employeeId,
-                    datetime_log: {
-                        gte: startDay,
-                        lt: endDay
-                    }
-                }
-            });
+			if (type === "CHECK_OUT") {
+				if (!today.find((a) => a.type === "CHECK_IN")) {
+					throw BaseError.badRequest("Must check-in first");
+				}
 
-            if (data.type === "CHECK_IN") {
-                if (today.find(a => a.type === "CHECK_IN")) {
-                    throw BaseError.badRequest("Already check-in today");
-                }
-            }
+				if (today.find((a) => a.type === "CHECK_OUT")) {
+					throw BaseError.badRequest("Already check-out today");
+				}
+			}
 
-            if (data.type === "CHECK_OUT") {
-                if (!today.find(a => a.type === "CHECK_IN")) {
-                    throw BaseError.badRequest("Must check-in first");
-                }
-                if (today.find(a => a.type === "CHECK_OUT")) {
-                    throw BaseError.badRequest("Already check-out today");
-                }
-            }
+			const utcDate = new Date(data.datetime_log);
 
-            const utcDate = new Date(data.datetime_log);
+			const parts = new Intl.DateTimeFormat("en-GB", {
+				timeZone: "Asia/Jakarta",
+				hour: "2-digit",
+				minute: "2-digit",
+				hour12: false,
+			}).formatToParts(utcDate);
 
-            const parts = new Intl.DateTimeFormat("en-GB", {
-                timeZone: "Asia/Jakarta",
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: false
-            }).formatToParts(utcDate);
+			const hour = Number(parts.find((p) => p.type === "hour").value);
+			const minutes = Number(parts.find((p) => p.type === "minute").value);
 
-            const hour = Number(parts.find(p => p.type === "hour").value);
-            const minutes = Number(parts.find(p => p.type === "minute").value);
+			const totalMinutes = hour * 60 + minutes;
 
-            const totalMinutes = hour * 60 + minutes;
+			const batasMasuk = 9 * 60;
+			const batasPulang = 17 * 60;
 
-            const batasMasuk = 9 * 60;     // 09:00
-            const batasPulang = 17 * 60;   // 17:00
+			let status = "ON_TIME";
 
-            let status = "ON_TIME";
+			if (type === "CHECK_IN" && totalMinutes > batasMasuk) {
+				status = "LATE";
+			}
 
-            if (data.type === "CHECK_IN" && totalMinutes > batasMasuk) {
-                status = "LATE";
-            }
+			if (type === "CHECK_OUT" && totalMinutes < batasPulang) {
+				status = "EARLY";
+			}
 
-            if (data.type === "CHECK_OUT" && totalMinutes < batasPulang) {
-                status = "EARLY";
-            }
+			data.latitude = Number(data.latitude);
+			data.longitude = Number(data.longitude);
+			data.accuracy = data.accuracy ? Number(data.accuracy) : null;
 
-            data.latitude = Number(data.latitude);
-            data.longitude = Number(data.longitude);
-            data.accuracy = data.accuracy ? Number(data.accuracy) : null;
+			if (data.accuracy === null || isNaN(data.accuracy)) {
+				throw BaseError.badRequest("Invalid GPS accuracy");
+			}
 
-            if (
-                data.accuracy === null ||
-                isNaN(data.accuracy)
-            ) {
-                throw BaseError.badRequest(
-                    "Invalid GPS accuracy"
-                );
-            }
+			if (data.accuracy > 200) {
+				throw BaseError.badRequest("GPS accuracy too low");
+			}
 
-            if (data.accuracy > 5) {
-                throw BaseError.badRequest(
-                    "GPS accuracy too low"
-                );
-            }
-            if (isNaN(data.latitude) || isNaN(data.longitude)) {
-                throw BaseError.badRequest("Invalid coordinates");
-            }
+			if (isNaN(data.latitude) || isNaN(data.longitude)) {
+				throw BaseError.badRequest("Invalid coordinates");
+			}
 
-            const OFFICE_LAT = -6.2;
-            const OFFICE_LNG = 106.8;
-            const MAX_RADIUS = 100; 
+			const distance = getDistance(
+				ATTENDANCE_CONFIG.OFFICE_LAT,
+				ATTENDANCE_CONFIG.OFFICE_LNG,
+				data.latitude,
+				data.longitude,
+			);
 
-            const distance = getDistance(
-                OFFICE_LAT,
-                OFFICE_LNG,
-                data.latitude,
-                data.longitude
-            );
+			if (distance > ATTENDANCE_CONFIG.MAX_RADIUS) {
+				throw BaseError.badRequest("You are outside office area");
+			}
 
-            if (distance > MAX_RADIUS) {
-                throw BaseError.badRequest("You are outside office area");
-            }
+			const created = await tx.attendance.create({
+				data: {
+					...data,
+					status,
+				},
+			});
 
-            const created = await tx.attendance.create({
-                data: {
-                    ...data,
-                    status
-                }
-            });
+			return created;
+		});
+	}
 
-            return created;
-        });
-    }
+	async today(employeeId) {
+		const start = new Date();
+		start.setHours(0, 0, 0, 0);
 
-    async today(employeeId) {
-        const start = new Date();
-        start.setHours(0, 0, 0, 0);
+		const end = new Date();
+		end.setHours(23, 59, 59, 999);
 
-        const end = new Date();
-        end.setHours(23, 59, 59, 999);
+		const records = await this.prisma.attendance.findMany({
+			where: {
+				employeeId,
+				datetime_log: {
+					gte: start,
+					lt: end,
+				},
+			},
+		});
 
-        const records = await this.prisma.attendance.findMany({
-            where: {
-                employeeId,
-                datetime_log: {
-                    gte: start,
-                    lt: end
-                }
-            }
-        });
+		const checkIn = records.find((r) => r.type === "CHECK_IN") || null;
+		const checkOut = records.find((r) => r.type === "CHECK_OUT") || null;
 
-        return {
-            checkIn: records.find(r => r.type === "CHECK_IN"),
-            checkOut: records.find(r => r.type === "CHECK_OUT")
-        };
-    }
+		return {
+			checkIn,
+			checkOut,
+			canCheckIn: !checkIn,
+			canCheckOut: !!checkIn && !checkOut,
+			completed: !!checkIn && !!checkOut,
+		};
+	}
 
-    async list({ query } = {}) {
-        const options = buildQueryOptions(attendanceQueryConfig, query);
-       if (query?.search) {
-            const rawSearch = query.search.toLowerCase();
+	async list({ query } = {}) {
+		const options = buildQueryOptions(attendanceQueryConfig, query);
+		if (query?.search) {
+			const rawSearch = query.search.toLowerCase();
 
-            const orConditions = [
-                {
-                    users: {
-                        is: {
-                            full_name: {
-                                contains: rawSearch,
-                                mode: "insensitive",
-                            },
-                        },
-                    },
-                },
-            ];
+			const orConditions = [
+				{
+					users: {
+						is: {
+							full_name: {
+								contains: rawSearch,
+								mode: "insensitive",
+							},
+						},
+					},
+				},
+			];
 
-            // partial enum detection
-            if ("check in".includes(rawSearch)) {
-                orConditions.push({
-                    type: "CHECK_IN",
-                });
-            }
+			// partial enum detection
+			if ("check in".includes(rawSearch)) {
+				orConditions.push({
+					type: "CHECK_IN",
+				});
+			}
 
-            if ("check out".includes(rawSearch)) {
-                orConditions.push({
-                    type: "CHECK_OUT",
-                });
-            }
+			if ("check out".includes(rawSearch)) {
+				orConditions.push({
+					type: "CHECK_OUT",
+				});
+			}
 
-            if ("late".includes(rawSearch)) {
-                orConditions.push({
-                    status: "LATE",
-                });
-            }
+			if ("late".includes(rawSearch)) {
+				orConditions.push({
+					status: "LATE",
+				});
+			}
 
-            if ("early".includes(rawSearch)) {
-                orConditions.push({
-                    status: "EARLY",
-                });
-            }
+			if ("early".includes(rawSearch)) {
+				orConditions.push({
+					status: "EARLY",
+				});
+			}
 
-            if ("on_time".includes(rawSearch)) {
-                orConditions.push({
-                    status: "ON_TIME",
-                });
-            }
+			if ("on_time".includes(rawSearch)) {
+				orConditions.push({
+					status: "ON_TIME",
+				});
+			}
 
-            if ("pending".includes(rawSearch)) {
-                orConditions.push({
-                    status: "PENDING",
-                });
-            }
+			if ("pending".includes(rawSearch)) {
+				orConditions.push({
+					status: "PENDING",
+				});
+			}
 
-            options.where = {
-                OR: orConditions,
-            };
-        }
-        const [data, count] = await Promise.all([
-        this.prisma.attendance.findMany({
-            ...options,
+			options.where = {
+				OR: orConditions,
+			};
+		}
+		const [data, count] = await Promise.all([
+			this.prisma.attendance.findMany({
+				...options,
 
-            include: {
-            users: true,
-            },
-        }),
+				include: {
+					users: true,
+				},
+			}),
 
-        this.prisma.attendance.count({
-            where: options.where,
-        }),
-        ]);
+			this.prisma.attendance.count({
+				where: options.where,
+			}),
+		]);
 
-        return { data, count };
-    }
+		return { data, count };
+	}
 
-    async detail(id) {
-        const data = await this.prisma.attendance.findUnique({
-            where: { id }
-        });
+	async detail(id) {
+		const data = await this.prisma.attendance.findUnique({
+			where: { id },
+		});
 
-        if (!data) throw BaseError.notFound("Attendance not found");
+		if (!data) throw BaseError.notFound("Attendance not found");
 
-        return data;
-    }
+		return data;
+	}
 
-    async remove(currentUser, id) {
-    return this.prisma.$transaction(async (tx) => {
+	async remove(currentUser, id) {
+		return this.prisma.$transaction(async (tx) => {
+			if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
+				throw BaseError.forbidden("You are not allowed to delete attendance");
+			}
+			const current = await tx.attendance.findUnique({
+				where: { id },
+			});
 
-        if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
-            throw BaseError.forbidden("You are not allowed to delete attendance");
-        }
-        const current = await tx.attendance.findUnique({
-            where: { id },
-        });
+			if (!current) {
+				throw BaseError.notFound("Attendance not found");
+			}
+		});
+	}
 
-        if (!current) {
-            throw BaseError.notFound("Attendance not found");
-        }
-    });
-}
+	async getConfig() {
+		return {
+			officeLatitude: ATTENDANCE_CONFIG.OFFICE_LAT,
+			officeLongitude: ATTENDANCE_CONFIG.OFFICE_LNG,
+			radius: ATTENDANCE_CONFIG.MAX_RADIUS,
+		};
+	}
 }
 
 export default new AttendanceService();

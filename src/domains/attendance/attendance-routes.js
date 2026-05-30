@@ -8,30 +8,41 @@ import uploadFile from "../../middlewares/upload-file-middleware.js";
 import { attendanceCreateSchema } from "./attendance-schema.js";
 
 class AttendanceRoutes extends BaseRoutes {
-    routes() {
+	routes() {
+		this.router.post("/check-in", [
+			authTokenMiddleware.authenticate,
+			uploadFile("image").single("photo"),
+			validateCredentials(attendanceCreateSchema),
+			tryCatch(AttendanceController.checkIn),
+		]);
 
-        this.router.get("/today", [
-            authTokenMiddleware.authenticate,
-            tryCatch(AttendanceController.today)
-        ]);
+		this.router.post("/check-out", [
+			authTokenMiddleware.authenticate,
+			uploadFile("image").single("photo"),
+			validateCredentials(attendanceCreateSchema),
+			tryCatch(AttendanceController.checkOut),
+		]);
 
-        this.router.get("/", [
-            authTokenMiddleware.authenticate,
-            tryCatch(AttendanceController.list)
-        ]);
+		this.router.get("/config", [
+			authTokenMiddleware.authenticate,
+			tryCatch(AttendanceController.getConfig),
+		]);
 
-        this.router.get("/:id", [
-            authTokenMiddleware.authenticate,
-            tryCatch(AttendanceController.detail)
-        ]);
+		this.router.get("/today", [
+			authTokenMiddleware.authenticate,
+			tryCatch(AttendanceController.today),
+		]);
 
-        this.router.post("/", [
-            authTokenMiddleware.authenticate,
-            uploadFile("image").single("photo"),
-            validateCredentials(attendanceCreateSchema),
-            tryCatch(AttendanceController.create)
-        ]);
-    }
+		this.router.get("/", [
+			authTokenMiddleware.authenticate,
+			tryCatch(AttendanceController.list),
+		]);
+
+		this.router.get("/:id", [
+			authTokenMiddleware.authenticate,
+			tryCatch(AttendanceController.detail),
+		]);
+	}
 }
 
 export default new AttendanceRoutes().router;

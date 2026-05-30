@@ -1,18 +1,15 @@
 const allowancesQueryConfig = {
-    searchableFields: ["allowance", "description"],
+	searchableFields: ["allowance", "description"],
 
-    filterableFields: ["allowance"],
+	filterableFields: ["allowance"],
 
-    orderableFields: [
-        "id",
-        "allowance"
-    ],
+	orderableFields: ["id", "allowance"],
 
-    relations: {
-        employeeAllowances: true
-    },
+	relations: {
+		employeeAllowances: true,
+	},
 
-    dateFields: {}, // Tidak ada field tanggal di model Allowances
+	dateFields: {}, // Tidak ada field tanggal di model Allowances
 };
 
 export default allowancesQueryConfig;

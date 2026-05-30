@@ -48,13 +48,15 @@ export function buildQueryOptions(modelConfig, query = {}, fixedWhere = {}) {
 			return parts.reduceRight((acc, curr) => ({ [curr]: acc }), condition);
 		});
 
-		const jsonSearchConditions = jsonSearchableFields.map(({ field, path }) => ({
-			[field]: {
-				path,
-				string_contains: searchTerm,
-				mode: "insensitive",
-			},
-		}));
+		const jsonSearchConditions = jsonSearchableFields.map(
+			({ field, path }) => ({
+				[field]: {
+					path,
+					string_contains: searchTerm,
+					mode: "insensitive",
+				},
+			}),
+		);
 
 		where.OR = [...stringSearchConditions, ...jsonSearchConditions];
 	}
@@ -75,7 +77,8 @@ export function buildQueryOptions(modelConfig, query = {}, fixedWhere = {}) {
 		where[createdField] = new Date(filter.created_at);
 	} else if (filter?.created_range) {
 		const r = {};
-		if (filter.created_range.start) r.gte = new Date(filter.created_range.start);
+		if (filter.created_range.start)
+			r.gte = new Date(filter.created_range.start);
 		if (filter.created_range.end) r.lte = new Date(filter.created_range.end);
 		where[createdField] = r;
 	}
@@ -84,7 +87,8 @@ export function buildQueryOptions(modelConfig, query = {}, fixedWhere = {}) {
 		where[updatedField] = new Date(filter.updated_at);
 	} else if (filter?.updated_range) {
 		const r = {};
-		if (filter.updated_range.start) r.gte = new Date(filter.updated_range.start);
+		if (filter.updated_range.start)
+			r.gte = new Date(filter.updated_range.start);
 		if (filter.updated_range.end) r.lte = new Date(filter.updated_range.end);
 		where[updatedField] = r;
 	}

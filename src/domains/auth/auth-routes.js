@@ -9,7 +9,7 @@ import {
 	sendOtpSchema,
 	forgetPasswordSchema,
 	resetPasswordSchema,
-	verifyOtpSchema
+	verifyOtpSchema,
 } from "./auth-schema.js";
 import authTokenMiddleware from "../../middlewares/auth-token-middleware.js";
 
@@ -36,7 +36,7 @@ class AuthRoutes extends BaseRoutes {
 			authTokenMiddleware.authenticate,
 			tryCatch(AuthController.getProfile),
 		]);
-		
+
 		this.router.post("/forget-password", [
 			validateCredentials(forgetPasswordSchema),
 			tryCatch(AuthController.forgetPassword),
