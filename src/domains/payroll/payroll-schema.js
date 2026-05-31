@@ -35,46 +35,9 @@ const payrollCreateSchema = Joi.object({
 });
 
 const payrollUpdateSchema = Joi.object({
-	ref_no: Joi.string().trim().optional().allow("").messages({
-		"string.empty": "Reference number cannot be empty",
+	status: Joi.string().valid("PAID", "CANCELLED").required().messages({
+		"any.required": "Status is required",
+		"any.only": "Status must be PAID or CANCELLED",
 	}),
-
-	user_id: Joi.string().uuid().optional().allow("").messages({
-		"string.guid": "Employee ID must be a valid UUID",
-	}),
-
-	date_from: Joi.date().optional().allow("").messages({
-		"date.base": "Date from must be a valid date",
-	}),
-
-	date_to: Joi.date()
-		.greater(Joi.ref("date_from"))
-		.optional()
-		.allow("")
-		.messages({
-			"date.base": "Date to must be a valid date",
-			"date.greater": "Date to must be after date from",
-		}),
-
-	type: Joi.string()
-		.valid("MONTHLY", "SEMI_MONTHLY")
-		.optional()
-		.allow("")
-		.messages({
-			"any.only": "Type must be either MONTHLY or SEMI_MONTHLY",
-		}),
-
-	status: Joi.string()
-		.valid("PENDING", "PAID", "CANCELLED")
-		.optional()
-		.allow("")
-		.messages({
-			"any.only": "Status must be PENDING, PAID, or CANCELLED",
-		}),
-})
-	.min(1)
-	.messages({
-		"object.min": "At least one field must be provided for update",
-	});
-
+});
 export { payrollUpdateSchema, payrollCreateSchema };
