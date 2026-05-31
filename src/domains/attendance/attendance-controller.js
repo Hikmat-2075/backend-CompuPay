@@ -1,65 +1,60 @@
-import { createdResponse, successResponse } from "../../utils/response.js";
+import { successResponse } from "../../utils/response.js";
 import attendanceService from "./attendance-service.js";
 
 class AttendanceController {
-	async create(req, res) {
-		const data = {
-			...req.body,
-			employeeId: req.user.id,
-		};
+  async checkIn(req, res) {
+    const result = await attendanceService.create(
+      {
+        ...req.body,
+        employeeId: req.user.id,
+      },
+      req.file,
+      "CHECK_IN",
+    );
 
-		const file = req.file;
+    return successResponse(res, result, "Check-in successfully");
+  }
 
-		const result = await attendanceService.create(data, file);
-		return createdResponse(res, result);
-	}
+  async checkOut(req, res) {
+    const result = await attendanceService.create(
+      {
+        ...req.body,
+        employeeId: req.user.id,
+      },
+      req.file,
+      "CHECK_OUT",
+    );
 
-	async checkIn(req, res) {
-		const result = await attendanceService.create(
-			{
-				...req.body,
-				employeeId: req.user.id,
-			},
-			req.file,
-			"CHECK_IN",
-		);
+    return successResponse(res, result, "Check-out successfully");
+  }
 
-		return successResponse(res, result, "Check-in successfully");
-	}
+  async today(req, res) {
+    const result = await attendanceService.today(req.user.id);
+    return successResponse(res, result);
+  }
 
-	async checkOut(req, res) {
-		const result = await attendanceService.create(
-			{
-				...req.body,
-				employeeId: req.user.id,
-			},
-			req.file,
-			"CHECK_OUT",
-		);
+  async list(req, res) {
+    const result = await attendanceService.list({ query: req.query });
 
-		return successResponse(res, result, "Check-out successfully");
-	}
+    return successResponse(
+      res,
+      result.data,
+      "Attendance retrieved successfully",
+      {
+        totalItems: result.count,
+      },
+    );
+  }
 
-	async today(req, res) {
-		const result = await attendanceService.today(req.user.id);
-		return successResponse(res, result);
-	}
+  async detail(req, res) {
+    const result = await attendanceService.detail(req.params.id);
+    return successResponse(res, result);
+  }
 
-	async list(req, res) {
-		const result = await attendanceService.list({ query: req.query });
-		return successResponse(res, result.data);
-	}
-
-	async detail(req, res) {
-		const result = await attendanceService.detail(req.params.id);
-		return successResponse(res, result);
-	}
-
-	async getConfig(req, res) {
-		const result = await attendanceService.getConfig();
-
-		return successResponse(res, result);
-	}
+  async getConfig(req, res) {
+    const result = await attendanceService.getConfig();
+    return successResponse(res, result);
+  }
 }
 
 export default new AttendanceController();
