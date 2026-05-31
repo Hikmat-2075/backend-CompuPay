@@ -1,9 +1,5 @@
 const payrollQueryConfig = {
-	searchableFields: [
-		"ref_no",
-		"employee.full_name",
-		"employee.email",
-	],
+	searchableFields: ["ref_no", "employee.full_name", "employee.email"],
 
 	enumSearchableFields: [
 		{
