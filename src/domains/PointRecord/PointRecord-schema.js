@@ -1,32 +1,34 @@
 import Joi from "joi";
 
 const pointRecordListQuerySchema = Joi.object({
-  search: Joi.string().allow("", null).optional(),
+	search: Joi.string().allow("", null).optional(),
 
-  filter: Joi.object({
-    attendanceId: Joi.string().uuid().optional(),
-    
-    // Range point 
-    total_point_min: Joi.number().integer().optional(),
-    total_point_max: Joi.number().integer().optional(),
+	filter: Joi.object({
+		attendanceId: Joi.string().uuid().optional(),
 
-    // Filter department
-    department_id: Joi.string().uuid().optional(),
-  }).optional(),
+		// Range point
+		total_point_min: Joi.number().integer().optional(),
+		total_point_max: Joi.number().integer().optional(),
 
-  pagination: Joi.object({
-    page: Joi.number().optional(),
-    limit: Joi.number().optional(),
-  }).optional(),
+		// Filter department
+		department_id: Joi.string().uuid().optional(),
+	}).optional(),
 
-  get_all: Joi.boolean().optional(),
-  include_relation: Joi.array().items(Joi.string()).optional(),
-  order_by: Joi.array().items(
-    Joi.object({
-      field: Joi.string().required(),
-      direction: Joi.string().valid("asc", "desc").optional(),
-    })
-  ).optional(),
+	pagination: Joi.object({
+		page: Joi.number().optional(),
+		limit: Joi.number().optional(),
+	}).optional(),
+
+	get_all: Joi.boolean().optional(),
+	include_relation: Joi.array().items(Joi.string()).optional(),
+	order_by: Joi.array()
+		.items(
+			Joi.object({
+				field: Joi.string().required(),
+				direction: Joi.string().valid("asc", "desc").optional(),
+			}),
+		)
+		.optional(),
 });
 
 export { pointRecordListQuerySchema };

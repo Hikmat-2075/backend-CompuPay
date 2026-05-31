@@ -19,6 +19,7 @@ export function buildQueryOptions(modelConfig, query = {}, fixedWhere = {}) {
 		select = {},
 		dateFields = { created_at: "created_at", updated_at: "updated_at" },
 		jsonSearchableFields = [],
+		enumSearchableFields = [],
 	} = modelConfig;
 
 	const {
@@ -35,28 +36,46 @@ export function buildQueryOptions(modelConfig, query = {}, fixedWhere = {}) {
 
 	// 🔍 Search
 	if (search != null && String(search).trim() !== "") {
-		const searchTerm = String(search);
+		const searchTerm = String(search).trim();
+		const upperSearchTerm = searchTerm.toUpperCase();
 
 		const stringSearchConditions = searchableFields.map((fieldPath) => {
 			const parts = fieldPath.split(".");
 			const leaf = parts.pop();
 
-			const condition = isEnumField(modelConfig, fieldPath)
-				? { [leaf]: { equals: searchTerm.toUpperCase() } }
-				: { [leaf]: { contains: searchTerm, mode: "insensitive" } };
+			const condition = {
+				[leaf]: {
+					contains: searchTerm,
+					mode: "insensitive",
+				},
+			};
 
 			return parts.reduceRight((acc, curr) => ({ [curr]: acc }), condition);
 		});
 
-		const jsonSearchConditions = jsonSearchableFields.map(({ field, path }) => ({
-			[field]: {
-				path,
-				string_contains: searchTerm,
-				mode: "insensitive",
-			},
-		}));
+		const enumSearchConditions = enumSearchableFields
+			.filter(({ values }) => values.includes(upperSearchTerm))
+			.map(({ field }) => ({
+				[field]: {
+					equals: upperSearchTerm,
+				},
+			}));
 
-		where.OR = [...stringSearchConditions, ...jsonSearchConditions];
+		const jsonSearchConditions = jsonSearchableFields.map(
+			({ field, path }) => ({
+				[field]: {
+					path,
+					string_contains: searchTerm,
+					mode: "insensitive",
+				},
+			}),
+		);
+
+		where.OR = [
+			...stringSearchConditions,
+			...enumSearchConditions,
+			...jsonSearchConditions,
+		];
 	}
 
 	// 🎯 Filtering
@@ -75,7 +94,8 @@ export function buildQueryOptions(modelConfig, query = {}, fixedWhere = {}) {
 		where[createdField] = new Date(filter.created_at);
 	} else if (filter?.created_range) {
 		const r = {};
-		if (filter.created_range.start) r.gte = new Date(filter.created_range.start);
+		if (filter.created_range.start)
+			r.gte = new Date(filter.created_range.start);
 		if (filter.created_range.end) r.lte = new Date(filter.created_range.end);
 		where[createdField] = r;
 	}
@@ -84,7 +104,8 @@ export function buildQueryOptions(modelConfig, query = {}, fixedWhere = {}) {
 		where[updatedField] = new Date(filter.updated_at);
 	} else if (filter?.updated_range) {
 		const r = {};
-		if (filter.updated_range.start) r.gte = new Date(filter.updated_range.start);
+		if (filter.updated_range.start)
+			r.gte = new Date(filter.updated_range.start);
 		if (filter.updated_range.end) r.lte = new Date(filter.updated_range.end);
 		where[updatedField] = r;
 	}

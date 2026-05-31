@@ -1,18 +1,15 @@
 const deductionsQueryConfig = {
-    searchableFields: ["deduction", "description"],
+	searchableFields: ["deduction", "description"],
 
-    filterableFields: ["deduction"],
+	filterableFields: ["deduction"],
 
-    orderableFields: [
-        "id",
-        "deduction"
-    ],
+	orderableFields: ["id", "deduction"],
 
-    relations: {
-        employeeDeductions: true
-    },
+	relations: {
+		employeeDeductions: true,
+	},
 
-    dateFields: {},
+	dateFields: {},
 };
 
 export default deductionsQueryConfig;
