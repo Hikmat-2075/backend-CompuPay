@@ -158,9 +158,10 @@ class PositionService {
 				throw BaseError.notFound("Position not found");
 			}
 
-			// Cek apakah posisi sedang digunakan oleh employee
 			const employeeCount = await tx.user.count({
-				where: { positionId: id },
+				where: {
+					position_id: id,
+				},
 			});
 
 			if (employeeCount > 0) {
@@ -169,14 +170,12 @@ class PositionService {
 				);
 			}
 
-			// Baru hapus position
-			const deleted = await tx.position.delete({
+			await tx.position.delete({
 				where: { id },
 			});
 
 			return {
 				message: "Position deleted successfully",
-				// data: deleted
 			};
 		});
 	}
