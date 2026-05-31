@@ -3,15 +3,30 @@ import attendanceService from "./attendance-service.js";
 
 class AttendanceController {
 	async create(req, res) {
+		const { type, ...body } = req.body;
+
+		if (!type) {
+			throw BaseError.badRequest("Attendance type is required");
+		}
+
+		const normalizedType = type.toUpperCase();
+
+		if (!["CHECK_IN", "CHECK_OUT"].includes(normalizedType)) {
+			throw BaseError.badRequest("Invalid attendance type");
+		}
+
 		const data = {
-			...req.body,
-			employeeId: req.user.id,
+			...body,
+			employeeId: body.employeeId || req.user.id,
 		};
 
-		const file = req.file;
+		const result = await attendanceService.create(
+			data,
+			req.file,
+			normalizedType,
+		);
 
-		const result = await attendanceService.create(data, file);
-		return createdResponse(res, result);
+		return createdResponse(res, result, "Attendance created successfully");
 	}
 
 	async checkIn(req, res) {

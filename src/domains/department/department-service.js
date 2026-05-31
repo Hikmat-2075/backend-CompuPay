@@ -120,16 +120,16 @@ class DepartmentService {
 
 	async remove(id) {
 		return this.prisma.$transaction(async (tx) => {
-			const current = await this.prisma.department.findUnique({
+			const current = await tx.department.findUnique({
 				where: { id },
 			});
 
 			if (!current) {
 				throw BaseError.notFound("Department not found");
 			}
-			// cek apakah department dipakai employee
+
 			const employeeCount = await tx.user.count({
-				where: { departmentId: id },
+				where: { department_id: id },
 			});
 
 			if (employeeCount > 0) {
@@ -138,9 +138,8 @@ class DepartmentService {
 				);
 			}
 
-			// cek apakah department dipakai position
 			const positionCount = await tx.position.count({
-				where: { departmentId: id },
+				where: { department_id: id },
 			});
 
 			if (positionCount > 0) {
@@ -149,14 +148,12 @@ class DepartmentService {
 				);
 			}
 
-			//jika aman → hapus
-			const deleted = await tx.department.delete({
+			await tx.department.delete({
 				where: { id },
 			});
 
 			return {
 				message: "Department deleted successfully",
-				// data: deleted
 			};
 		});
 	}
