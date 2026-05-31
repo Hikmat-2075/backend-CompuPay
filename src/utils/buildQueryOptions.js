@@ -19,6 +19,7 @@ export function buildQueryOptions(modelConfig, query = {}, fixedWhere = {}) {
 		select = {},
 		dateFields = { created_at: "created_at", updated_at: "updated_at" },
 		jsonSearchableFields = [],
+		enumSearchableFields = [],
 	} = modelConfig;
 
 	const {
