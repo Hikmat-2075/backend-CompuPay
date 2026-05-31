@@ -215,7 +215,10 @@ class PayrollService {
 
 		return this.prisma.$transaction(async (tx) => {
 			const payroll = await tx.payroll.findUnique({ where: { id } });
-			if (!payroll) throw BaseError.notFound("Payroll not found");
+
+			if (!payroll) {
+				throw BaseError.notFound("Payroll not found");
+			}
 
 			if (payroll.status !== "PENDING") {
 				throw BaseError.badRequest(
@@ -223,18 +226,57 @@ class PayrollService {
 				);
 			}
 
-			// // 🚫 Jangan izinkan edit ref_no, salary, dll
-			// if (data.status && data.status !== "CANCELLED") {
-			//   throw BaseError.badRequest(
-			//     "Only status CANCELLED is allowed via update"
-			//   );
-			// }
+			const updateData = {};
+
+			if (data.ref_no !== undefined && data.ref_no !== "") {
+				const refExist = await tx.payroll.findFirst({
+					where: {
+						ref_no: data.ref_no,
+						NOT: { id },
+					},
+				});
+
+				if (refExist) {
+					throw BaseError.badRequest("Reference number already exists");
+				}
+
+				updateData.ref_no = data.ref_no;
+			}
+
+			if (data.user_id !== undefined && data.user_id !== "") {
+				const employee = await tx.user.findUnique({
+					where: { id: data.user_id },
+				});
+
+				if (!employee) {
+					throw BaseError.notFound("Employee not found");
+				}
+
+				updateData.user_id = data.user_id;
+			}
+
+			if (data.date_from !== undefined && data.date_from !== "") {
+				updateData.date_from = new Date(data.date_from);
+			}
+
+			if (data.date_to !== undefined && data.date_to !== "") {
+				updateData.date_to = new Date(data.date_to);
+			}
+
+			if (data.type !== undefined && data.type !== "") {
+				updateData.type = data.type;
+			}
+
+			const finalDateFrom = updateData.date_from ?? payroll.date_from;
+			const finalDateTo = updateData.date_to ?? payroll.date_to;
+
+			if (finalDateFrom > finalDateTo) {
+				throw BaseError.badRequest("date_from cannot be greater than date_to");
+			}
 
 			const updated = await tx.payroll.update({
 				where: { id },
-				data: {
-					status: "PAID",
-				},
+				data: updateData,
 			});
 
 			return tx.payroll.findUnique({

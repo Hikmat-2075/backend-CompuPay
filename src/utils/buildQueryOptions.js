@@ -35,18 +35,30 @@ export function buildQueryOptions(modelConfig, query = {}, fixedWhere = {}) {
 
 	// 🔍 Search
 	if (search != null && String(search).trim() !== "") {
-		const searchTerm = String(search);
+		const searchTerm = String(search).trim();
+		const upperSearchTerm = searchTerm.toUpperCase();
 
 		const stringSearchConditions = searchableFields.map((fieldPath) => {
 			const parts = fieldPath.split(".");
 			const leaf = parts.pop();
 
-			const condition = isEnumField(modelConfig, fieldPath)
-				? { [leaf]: { equals: searchTerm.toUpperCase() } }
-				: { [leaf]: { contains: searchTerm, mode: "insensitive" } };
+			const condition = {
+				[leaf]: {
+					contains: searchTerm,
+					mode: "insensitive",
+				},
+			};
 
 			return parts.reduceRight((acc, curr) => ({ [curr]: acc }), condition);
 		});
+
+		const enumSearchConditions = enumSearchableFields
+			.filter(({ values }) => values.includes(upperSearchTerm))
+			.map(({ field }) => ({
+				[field]: {
+					equals: upperSearchTerm,
+				},
+			}));
 
 		const jsonSearchConditions = jsonSearchableFields.map(
 			({ field, path }) => ({
@@ -58,7 +70,11 @@ export function buildQueryOptions(modelConfig, query = {}, fixedWhere = {}) {
 			}),
 		);
 
-		where.OR = [...stringSearchConditions, ...jsonSearchConditions];
+		where.OR = [
+			...stringSearchConditions,
+			...enumSearchConditions,
+			...jsonSearchConditions,
+		];
 	}
 
 	// 🎯 Filtering

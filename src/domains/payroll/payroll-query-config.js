@@ -1,10 +1,11 @@
 const payrollQueryConfig = {
-	searchableFields: [
-		"ref_no",
-		"type",
-		"status",
-		"employee.full_name",
-		"employee.email",
+	searchableFields: ["ref_no", "type", "employee.full_name", "employee.email"],
+
+	enumSearchableFields: [
+		{
+			field: "status",
+			values: ["PENDING", "PAID", "CANCELLED"],
+		},
 	],
 
 	filterableFields: ["ref_no", "type", "status", "user_id"],
