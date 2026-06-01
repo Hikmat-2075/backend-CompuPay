@@ -11,62 +11,67 @@ import employeeDeductionRoutes from "./domains/employeeDeductions/employeeDeduct
 import leaveRequestRoutes from "./domains/leaveRequest/leaveRequest-routes.js";
 import attendanceRoutes from "./domains/attendance/attendance-routes.js";
 import pointRecordRoutes from "./domains/PointRecord/PointRecord-routes.js";
+import notificationRoutes from "./domains/notification/notification-routes.js";
 
 const router = express.Router();
 
 const appsRoutes = [
-	{
-		path: "/auth",
-		route: authRoutes,
-	},
-	{
-		path: "/user",
-		route: userRoutes,
-	},
-	{
-		path: "/department",
-		route: departmentRoutes,
-	},
-	{
-		path: "/position",
-		route: positionRoutes,
-	},
-	{
-		path: "/deduction",
-		route: deductionsRoutes,
-	},
-	{
-		path: "/payroll",
-		route: payrollRoutes,
-	},
-	{
-		path: "/employeeAllowance",
-		route: employeeAllowancesRoutes,
-	},
-	{
-		path: "/allowances",
-		route: AllowancesRoutes,
-	},
-	{
-		path: "/employeeDeduction",
-		route: employeeDeductionRoutes,
-	},
-	{
-		path: "/leaveRequest",
-		route: leaveRequestRoutes,
-	},
-	{
-		path: "/attendance",
-		route: attendanceRoutes,
-	},
-	{
-		path: "/pointRecord",
-		route: pointRecordRoutes,
-	},
+  {
+    path: "/auth",
+    route: authRoutes,
+  },
+  {
+    path: "/user",
+    route: userRoutes,
+  },
+  {
+    path: "/department",
+    route: departmentRoutes,
+  },
+  {
+    path: "/position",
+    route: positionRoutes,
+  },
+  {
+    path: "/deduction",
+    route: deductionsRoutes,
+  },
+  {
+    path: "/payroll",
+    route: payrollRoutes,
+  },
+  {
+    path: "/employeeAllowance",
+    route: employeeAllowancesRoutes,
+  },
+  {
+    path: "/allowances",
+    route: AllowancesRoutes,
+  },
+  {
+    path: "/employeeDeduction",
+    route: employeeDeductionRoutes,
+  },
+  {
+    path: "/leaveRequest",
+    route: leaveRequestRoutes,
+  },
+  {
+    path: "/attendance",
+    route: attendanceRoutes,
+  },
+  {
+    path: "/pointRecord",
+    route: pointRecordRoutes,
+  },
+  {
+    path: "/notification",
+    route: notificationRoutes,
+  },
 ];
 
 appsRoutes.forEach(({ path, route }) => {
-	router.use(`/v1${path}`, route);
+  router.use(`/v1${path}`, route);
 });
 
 export default router;
