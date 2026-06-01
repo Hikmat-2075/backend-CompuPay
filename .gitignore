@@ -16,3 +16,6 @@ prisma/migrations
 
 # Local development
 package-lock.json
+
+src/config/firebase-service-account.json
+dist/config/firebase-service-account.json
