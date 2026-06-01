@@ -5,279 +5,352 @@ import { PrismaService } from "../../common/services/prisma.service.js";
 import attendanceQueryConfig from "./attendance-query-config.js";
 import { buildQueryOptions } from "../../utils/buildQueryOptions.js";
 import { getDistance } from "../../utils/geo.js";
+import { ATTENDANCE_CONFIG } from "../../config/attendance.config.js";
 
 class AttendanceService {
-    constructor() {
-        this.prisma = new PrismaService();
-    }
+	constructor() {
+		this.prisma = new PrismaService();
+	}
 
-    async create(data, file) {
-        return this.prisma.$transaction(async (tx) => {
+	getJakartaTimeParts(date) {
+		const parts = new Intl.DateTimeFormat("en-GB", {
+			timeZone: "Asia/Jakarta",
+			hour: "2-digit",
+			minute: "2-digit",
+			hour12: false,
+		}).formatToParts(date);
 
-            if (file) {
-                const uploadDir = path.join(process.cwd(), "public/assets/attendance");
+		const hour = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+		const minutes = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
 
-                if (!fs.existsSync(uploadDir)) {
-                    fs.mkdirSync(uploadDir, { recursive: true });
-                }
+		return {
+			hour,
+			minutes,
+			totalMinutes: hour * 60 + minutes,
+		};
+	}
 
-                const filename = Date.now() + "-" + file.originalname;
-                const filepath = path.join(uploadDir, filename);
+	getAttendanceStatus(type, date) {
+		const { totalMinutes } = this.getJakartaTimeParts(date);
 
-                fs.writeFileSync(filepath, file.buffer);
+		const batasMasuk = 9 * 60;
+		const batasPulang = 17 * 60;
 
-                data.photo_url = `assets/attendance/${filename}`;
-            }
+		if (type === "CHECK_IN") {
+			return totalMinutes >= batasMasuk ? "LATE" : "ON_TIME";
+		}
 
-           //const now = new Date();
+		if (type === "CHECK_OUT") {
+			return totalMinutes < batasPulang ? "EARLY" : "ON_TIME";
+		}
 
-            // override input
-            //data.datetime_log = now;
+		return "ON_TIME";
+	}
 
-            let now;
+	getPointByAttendance(type, date) {
+		if (type !== "CHECK_IN") return 0;
 
-            if (data.datetime_log) {
-                now = new Date(data.datetime_log);
+		const { totalMinutes } = this.getJakartaTimeParts(date);
+		const batasMasuk = 9 * 60;
 
-                if (isNaN(now)) {
-                    throw BaseError.badRequest("Invalid datetime format");
-                }
-            } else {
-                now = new Date();
-            }
+		return totalMinutes < batasMasuk ? 1 : 0;
+	}
 
-            data.datetime_log = now;
+	async create(data, file, type) {
+		let storedFilePath = null;
 
-            const startDay = new Date(now);
-            startDay.setHours(0, 0, 0, 0);
+		try {
+			return await this.prisma.$transaction(async (tx) => {
+				if (!file) {
+					throw BaseError.badRequest("Photo is required");
+				}
 
-            const endDay = new Date(now);
-            endDay.setHours(23, 59, 59, 999);
+				if (type !== "CHECK_IN" && type !== "CHECK_OUT") {
+					throw BaseError.badRequest("Invalid attendance type");
+				}
 
-            const today = await tx.attendance.findMany({
-                where: {
-                    employeeId: data.employeeId,
-                    datetime_log: {
-                        gte: startDay,
-                        lt: endDay
-                    }
-                }
-            });
+				const uploadDir = path.join(process.cwd(), "public/assets/attendance");
 
-            if (data.type === "CHECK_IN") {
-                if (today.find(a => a.type === "CHECK_IN")) {
-                    throw BaseError.badRequest("Already check-in today");
-                }
-            }
+				if (!fs.existsSync(uploadDir)) {
+					fs.mkdirSync(uploadDir, { recursive: true });
+				}
 
-            if (data.type === "CHECK_OUT") {
-                if (!today.find(a => a.type === "CHECK_IN")) {
-                    throw BaseError.badRequest("Must check-in first");
-                }
-                if (today.find(a => a.type === "CHECK_OUT")) {
-                    throw BaseError.badRequest("Already check-out today");
-                }
-            }
+				const filename = Date.now() + "-" + file.originalname;
+				const filepath = path.join(uploadDir, filename);
 
-            const utcDate = new Date(data.datetime_log);
+				fs.writeFileSync(filepath, file.buffer);
+				storedFilePath = filepath;
 
-            const parts = new Intl.DateTimeFormat("en-GB", {
-                timeZone: "Asia/Jakarta",
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: false
-            }).formatToParts(utcDate);
+				data.photo_url = `assets/attendance/${filename}`;
 
-            const hour = Number(parts.find(p => p.type === "hour").value);
-            const minutes = Number(parts.find(p => p.type === "minute").value);
+				let now;
 
-            const totalMinutes = hour * 60 + minutes;
+				if (data.datetime_log) {
+					now = new Date(data.datetime_log);
 
-            const batasMasuk = 9 * 60;     // 09:00
-            const batasPulang = 17 * 60;   // 17:00
+					if (isNaN(now)) {
+						throw BaseError.badRequest("Invalid datetime format");
+					}
+				} else {
+					now = new Date();
+				}
 
-            let status = "ON_TIME";
+				data.datetime_log = now;
+				data.type = type;
 
-            if (data.type === "CHECK_IN" && totalMinutes > batasMasuk) {
-                status = "LATE";
-            }
+				const startDay = new Date(now);
+				startDay.setHours(0, 0, 0, 0);
 
-            if (data.type === "CHECK_OUT" && totalMinutes < batasPulang) {
-                status = "EARLY";
-            }
+				const endDay = new Date(now);
+				endDay.setHours(23, 59, 59, 999);
 
-            data.latitude = Number(data.latitude);
-            data.longitude = Number(data.longitude);
-            data.accuracy = data.accuracy ? Number(data.accuracy) : null;
+				const today = await tx.attendance.findMany({
+					where: {
+						employeeId: data.employeeId,
+						datetime_log: {
+							gte: startDay,
+							lt: endDay,
+						},
+					},
+				});
 
-            if (
-                data.accuracy === null ||
-                isNaN(data.accuracy)
-            ) {
-                throw BaseError.badRequest(
-                    "Invalid GPS accuracy"
-                );
-            }
+				if (type === "CHECK_IN") {
+					if (today.find((a) => a.type === "CHECK_IN")) {
+						throw BaseError.badRequest("Already check-in today");
+					}
+				}
 
-            if (data.accuracy > 5) {
-                throw BaseError.badRequest(
-                    "GPS accuracy too low"
-                );
-            }
-            if (isNaN(data.latitude) || isNaN(data.longitude)) {
-                throw BaseError.badRequest("Invalid coordinates");
-            }
+				if (type === "CHECK_OUT") {
+					if (!today.find((a) => a.type === "CHECK_IN")) {
+						throw BaseError.badRequest("Must check-in first");
+					}
 
-            const OFFICE_LAT = -6.97328316915612;
-            const OFFICE_LNG = 107.63041672764288;
-            const MAX_RADIUS = 100; 
+					if (today.find((a) => a.type === "CHECK_OUT")) {
+						throw BaseError.badRequest("Already check-out today");
+					}
+				}
 
-            const distance = getDistance(
-                OFFICE_LAT,
-                OFFICE_LNG,
-                data.latitude,
-                data.longitude
-            );
+				const status = this.getAttendanceStatus(type, now);
+				const point = this.getPointByAttendance(type, now);
 
-            if (distance > MAX_RADIUS) {
-                throw BaseError.badRequest("You are outside office area");
-            }
+				data.latitude = Number(data.latitude);
+				data.longitude = Number(data.longitude);
+				data.accuracy = data.accuracy ? Number(data.accuracy) : null;
 
-            const created = await tx.attendance.create({
-                data: {
-                    ...data,
-                    status
-                }
-            });
+				if (data.accuracy === null || isNaN(data.accuracy)) {
+					throw BaseError.badRequest("Invalid GPS accuracy");
+				}
 
-            return created;
-        });
-    }
+				if (data.accuracy > 200) {
+					throw BaseError.badRequest("GPS accuracy too low");
+				}
 
-    async today(employeeId) {
-        const start = new Date();
-        start.setHours(0, 0, 0, 0);
+				if (isNaN(data.latitude) || isNaN(data.longitude)) {
+					throw BaseError.badRequest("Invalid coordinates");
+				}
 
-        const end = new Date();
-        end.setHours(23, 59, 59, 999);
+				const distance = getDistance(
+					ATTENDANCE_CONFIG.OFFICE_LAT,
+					ATTENDANCE_CONFIG.OFFICE_LNG,
+					data.latitude,
+					data.longitude,
+				);
 
-        const records = await this.prisma.attendance.findMany({
-            where: {
-                employeeId,
-                datetime_log: {
-                    gte: start,
-                    lt: end
-                }
-            }
-        });
+				if (distance > ATTENDANCE_CONFIG.MAX_RADIUS) {
+					throw BaseError.badRequest("You are outside office area");
+				}
 
-        return {
-            checkIn: records.find(r => r.type === "CHECK_IN"),
-            checkOut: records.find(r => r.type === "CHECK_OUT")
-        };
-    }
+				const created = await tx.attendance.create({
+					data: {
+						...data,
+						status,
+					},
+				});
 
-    async list({ query } = {}) {
-        const options = buildQueryOptions(attendanceQueryConfig, query);
-       if (query?.search) {
-            const rawSearch = query.search.toLowerCase();
+				if (type === "CHECK_IN") {
+					await tx.pointRecord.create({
+						data: {
+							attendanceId: created.id,
+							point,
+						},
+					});
+				}
 
-            const orConditions = [
-                {
-                    users: {
-                        is: {
-                            full_name: {
-                                contains: rawSearch,
-                                mode: "insensitive",
-                            },
-                        },
-                    },
-                },
-            ];
+				const result = await tx.attendance.findUnique({
+					where: {
+						id: created.id,
+					},
+					include: {
+						users: true,
+						pointRecord: true,
+					},
+				});
 
-            // partial enum detection
-            if ("check in".includes(rawSearch)) {
-                orConditions.push({
-                    type: "CHECK_IN",
-                });
-            }
+				return result;
+			});
+		} catch (error) {
+			if (storedFilePath && fs.existsSync(storedFilePath)) {
+				fs.unlinkSync(storedFilePath);
+			}
 
-            if ("check out".includes(rawSearch)) {
-                orConditions.push({
-                    type: "CHECK_OUT",
-                });
-            }
+			throw error;
+		}
+	}
 
-            if ("late".includes(rawSearch)) {
-                orConditions.push({
-                    status: "LATE",
-                });
-            }
+	async today(employeeId) {
+		const start = new Date();
+		start.setHours(0, 0, 0, 0);
 
-            if ("early".includes(rawSearch)) {
-                orConditions.push({
-                    status: "EARLY",
-                });
-            }
+		const end = new Date();
+		end.setHours(23, 59, 59, 999);
 
-            if ("on_time".includes(rawSearch)) {
-                orConditions.push({
-                    status: "ON_TIME",
-                });
-            }
+		const records = await this.prisma.attendance.findMany({
+			where: {
+				employeeId,
+				datetime_log: {
+					gte: start,
+					lt: end,
+				},
+			},
+			include: {
+				pointRecord: true,
+			},
+		});
 
-            if ("pending".includes(rawSearch)) {
-                orConditions.push({
-                    status: "PENDING",
-                });
-            }
+		const checkIn = records.find((r) => r.type === "CHECK_IN") || null;
+		const checkOut = records.find((r) => r.type === "CHECK_OUT") || null;
 
-            options.where = {
-                OR: orConditions,
-            };
-        }
-        const [data, count] = await Promise.all([
-        this.prisma.attendance.findMany({
-            ...options,
+		return {
+			checkIn,
+			checkOut,
+			canCheckIn: !checkIn,
+			canCheckOut: !!checkIn && !checkOut,
+			completed: !!checkIn && !!checkOut,
+		};
+	}
 
-            include: {
-            users: true,
-            },
-        }),
+	async list({ query } = {}) {
+		const options = buildQueryOptions(attendanceQueryConfig, query);
 
-        this.prisma.attendance.count({
-            where: options.where,
-        }),
-        ]);
+		if (query?.search) {
+			const rawSearch = query.search.toLowerCase();
 
-        return { data, count };
-    }
+			const orConditions = [
+				{
+					users: {
+						is: {
+							full_name: {
+								contains: rawSearch,
+								mode: "insensitive",
+							},
+						},
+					},
+				},
+			];
 
-    async detail(id) {
-        const data = await this.prisma.attendance.findUnique({
-            where: { id }
-        });
+			if ("check in".includes(rawSearch)) {
+				orConditions.push({
+					type: "CHECK_IN",
+				});
+			}
 
-        if (!data) throw BaseError.notFound("Attendance not found");
+			if ("check out".includes(rawSearch)) {
+				orConditions.push({
+					type: "CHECK_OUT",
+				});
+			}
 
-        return data;
-    }
+			if ("late".includes(rawSearch)) {
+				orConditions.push({
+					status: "LATE",
+				});
+			}
 
-    async remove(currentUser, id) {
-    return this.prisma.$transaction(async (tx) => {
+			if ("early".includes(rawSearch)) {
+				orConditions.push({
+					status: "EARLY",
+				});
+			}
 
-        if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
-            throw BaseError.forbidden("You are not allowed to delete attendance");
-        }
-        const current = await tx.attendance.findUnique({
-            where: { id },
-        });
+			if ("on_time".includes(rawSearch)) {
+				orConditions.push({
+					status: "ON_TIME",
+				});
+			}
 
-        if (!current) {
-            throw BaseError.notFound("Attendance not found");
-        }
-    });
-}
+			if ("pending".includes(rawSearch)) {
+				orConditions.push({
+					status: "PENDING",
+				});
+			}
+
+			options.where = {
+				OR: orConditions,
+			};
+		}
+
+		const [data, count] = await Promise.all([
+			this.prisma.attendance.findMany({
+				...options,
+				include: {
+					users: true,
+					pointRecord: true,
+				},
+			}),
+
+			this.prisma.attendance.count({
+				where: options.where,
+			}),
+		]);
+
+		return { data, count };
+	}
+
+	async detail(id) {
+		const data = await this.prisma.attendance.findUnique({
+			where: { id },
+			include: {
+				users: true,
+				pointRecord: true,
+			},
+		});
+
+		if (!data) throw BaseError.notFound("Attendance not found");
+
+		return data;
+	}
+
+	async remove(currentUser, id) {
+		return this.prisma.$transaction(async (tx) => {
+			if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
+				throw BaseError.forbidden("You are not allowed to delete attendance");
+			}
+
+			const current = await tx.attendance.findUnique({
+				where: { id },
+			});
+
+			if (!current) {
+				throw BaseError.notFound("Attendance not found");
+			}
+
+			await tx.attendance.delete({
+				where: { id },
+			});
+
+			return {
+				message: "Attendance deleted successfully",
+			};
+		});
+	}
+
+	async getConfig() {
+		return {
+			officeLatitude: ATTENDANCE_CONFIG.OFFICE_LAT,
+			officeLongitude: ATTENDANCE_CONFIG.OFFICE_LNG,
+			radius: ATTENDANCE_CONFIG.MAX_RADIUS,
+		};
+	}
 }
 
 export default new AttendanceService();

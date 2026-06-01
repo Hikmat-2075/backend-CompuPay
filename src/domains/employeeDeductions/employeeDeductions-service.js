@@ -5,215 +5,244 @@ import employeeDeductionsQueryConfig from "./employeeDeductions-query-config.js"
 import Joi from "joi";
 
 class EmployeeDeductionsService {
-  constructor() {
-    this.prisma = new PrismaService();
-  }
+	constructor() {
+		this.prisma = new PrismaService();
+	}
 
-  async create(currentUser, data) {
-    let validation = "";
-    const stack = [];
-    const fail = (msg, path) => {
-      validation += (validation ? " " : "") + msg;
-      stack.push({ message: msg, path: [path] });
-    };
+	isAdmin(currentUser) {
+		return currentUser.role === "ADMIN" || currentUser.role === "SUPER_ADMIN";
+	}
 
-    if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
-      fail(
-        "Forbidden, only ADMIN is allowed to create Employee Deduction",
-        "role"
-      );
-      throw new Joi.ValidationError(validation, stack);
-    }
+	cleanPayload(data) {
+		const payload = { ...data };
 
-    return this.prisma.$transaction(async (tx) => {
-      // Cek employee
-      const employee = await tx.user.findUnique({
-        where: { id: data.user_id },
-      });
-      if (!employee) {
-        fail("Employee not found", "user_id");
-        throw new Joi.ValidationError(validation, stack);
-      }
+		Object.keys(payload).forEach((key) => {
+			if (payload[key] === "" || payload[key] === null) {
+				delete payload[key];
+			}
+		});
 
-      // Cek deduction
-      const deduction = await tx.deductions.findUnique({
-        where: { id: data.deduction_id },
-      });
-      if (!deduction) {
-        fail("Deduction not found", "deduction_id");
-        throw new Joi.ValidationError(validation, stack);
-      }
+		if (payload.amount !== undefined) {
+			payload.amount = Number(payload.amount);
+		}
 
-      // Cek duplicate
-      const duplicate = await tx.employeeDeductions.findFirst({
-        where: {
-          user_id: data.user_id,
-          deduction_id: data.deduction_id,
-          effective_date: data.effective_date,
-        },
-      });
-      if (duplicate) {
-        fail(
-          "Employee already has this deduction on the same effective date",
-          "effective_date"
-        );
-        throw new Joi.ValidationError(validation, stack);
-      }
+		if (payload.effective_date !== undefined) {
+			payload.effective_date = new Date(payload.effective_date);
+		}
 
-      // Insert
-      const created = await tx.employeeDeductions.create({ data });
-      return created;
-    });
-  }
+		return payload;
+	}
 
-  async detail(id) {
-    const employeeDeduction = await this.prisma.employeeDeductions.findUnique({
-      where: { id },
-      include: employeeDeductionsQueryConfig.relations,
-    });
+	async create(currentUser, data) {
+		let validation = "";
+		const stack = [];
 
-    if (!employeeDeduction) {
-      throw BaseError.notFound("Employee Deduction not found");
-    }
-    return employeeDeduction;
-  }
+		const fail = (msg, path) => {
+			validation += (validation ? " " : "") + msg;
+			stack.push({ message: msg, path: [path] });
+		};
 
-  async list({ query } = {}) {
-    const options = buildQueryOptions(employeeDeductionsQueryConfig, query);
+		if (!this.isAdmin(currentUser)) {
+			fail(
+				"Forbidden, only ADMIN is allowed to create Employee Deduction",
+				"role",
+			);
+			throw new Joi.ValidationError(validation, stack);
+		}
 
-    options.include = employeeDeductionsQueryConfig.relations;
-    const [data, count] = await Promise.all([
-      this.prisma.employeeDeductions.findMany(options),
-      this.prisma.employeeDeductions.count({ where: options.where }),
-    ]);
+		return this.prisma.$transaction(async (tx) => {
+			const payload = this.cleanPayload(data);
 
-    const page = query?.pagination?.page ?? 1;
-    const limit = query?.pagination?.limit ?? 10;
-    const hasPagination = !!(query?.pagination && !query?.get_all);
-    const totalPages = hasPagination ? Math.ceil(count / limit) : 1;
+			const employee = await tx.user.findUnique({
+				where: { id: payload.user_id },
+			});
 
-    return {
-      data,
-      meta: hasPagination
-        ? {
-            totalItems: count,
-            totalPages,
-            currentPage: Number(page),
-            itemsPerPage: Number(limit),
-          }
-        : null,
-    };
-  }
+			if (!employee) {
+				fail("Employee not found", "user_id");
+				throw new Joi.ValidationError(validation, stack);
+			}
 
-  async update(currentUser, id, data) {
-    let validation = "";
-    const stack = [];
-    const fail = (msg, path) => {
-      validation += (validation ? " " : "") + msg;
-      stack.push({ message: msg, path: [path] });
-    };
+			const deduction = await tx.deductions.findUnique({
+				where: { id: payload.deduction_id },
+			});
 
-    // Role restriction
-    if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
-      fail(
-        "Forbidden, only ADMIN is allowed to update Employee Deduction",
-        "role"
-      );
-      throw new Joi.ValidationError(validation, stack);
-    }
+			if (!deduction) {
+				fail("Deduction not found", "deduction_id");
+				throw new Joi.ValidationError(validation, stack);
+			}
 
-    // Joi schema validation
-    const { error } = employeeDeductionsUpdateSchema.validate(data, {
-      abortEarly: false,
-    });
-    if (error) throw error;
+			const duplicate = await tx.employeeDeductions.findFirst({
+				where: {
+					user_id: payload.user_id,
+					deduction_id: payload.deduction_id,
+					type: payload.type,
+					effective_date: payload.effective_date,
+				},
+			});
 
-    return this.prisma.$transaction(async (tx) => {
-      const current = await tx.employeeDeductions.findUnique({ where: { id } });
-      if (!current) throw BaseError.notFound("Employee Deduction not found");
+			if (duplicate) {
+				fail(
+					"Employee already has this deduction with the same type and effective date",
+					"duplicate",
+				);
+				throw new Joi.ValidationError(validation, stack);
+			}
 
-      // ✔ Validasi userId (employee) jika diganti
-      if (data.userId) {
-        const employee = await tx.user.findUnique({
-          where: { id: data.userId },
-        });
-        if (!employee) {
-          fail("Employee not found", "userId");
-          throw new Joi.ValidationError(validation, stack);
-        }
-      }
+			const created = await tx.employeeDeductions.create({
+				data: payload,
+				include: employeeDeductionsQueryConfig.relations,
+			});
 
-      // ✔ Validasi deduction_id jika diganti
-      if (data.deduction_id) {
-        const deduction = await tx.deductions.findUnique({
-          where: { id: data.deduction_id },
-        });
-        if (!deduction) {
-          fail("Deduction not found", "deduction_id");
-          throw new Joi.ValidationError(validation, stack);
-        }
-      }
+			return created;
+		});
+	}
 
-      // 🚫 Cek duplicate (userId + deduction_id + type)
-      if (data.type || data.deduction_id || data.userId) {
-        const duplicate = await tx.employeeDeductions.findFirst({
-          where: {
-            userId: data.userId ?? current.userId,
-            deduction_id: data.deduction_id ?? current.deduction_id,
-            type: data.type ?? current.type,
-            id: { not: id },
-          },
-        });
+	async detail(id) {
+		const employeeDeduction = await this.prisma.employeeDeductions.findUnique({
+			where: { id },
+			include: employeeDeductionsQueryConfig.relations,
+		});
 
-        if (duplicate) {
-          fail(
-            "This deduction with the same type already exists for this employee",
-            "duplicate"
-          );
-          throw new Joi.ValidationError(validation, stack);
-        }
-      }
+		if (!employeeDeduction) {
+			throw BaseError.notFound("Employee Deduction not found");
+		}
 
-      const updated = await tx.employeeDeductions.update({
-        where: { id },
-        data,
-      });
+		return employeeDeduction;
+	}
 
-      return updated;
-    });
-  }
+	async list({ query } = {}) {
+		const options = buildQueryOptions(employeeDeductionsQueryConfig, query);
 
-  async remove(id) {
-    return this.prisma.$transaction(async (tx) => {
-      const current = await tx.employeeDeductions.findUnique({
-        where: { id },
-      });
+		options.include = employeeDeductionsQueryConfig.relations;
 
-      if (!current) {
-        throw BaseError.notFound("Employee Deduction not found");
-      }
+		const [data, count] = await Promise.all([
+			this.prisma.employeeDeductions.findMany(options),
+			this.prisma.employeeDeductions.count({ where: options.where }),
+		]);
 
-      // Cek apakah sudah dipakai di payroll item (jika ada relasi)
-      // const inUse = await tx.payroll.findFirst({
-      //   where: { deduction_id: id }, // sesuaikan field jika berbeda
-      // });
+		const page = query?.pagination?.page ?? 1;
+		const limit = query?.pagination?.limit ?? 10;
+		const hasPagination = !!(query?.pagination && !query?.get_all);
+		const totalPages = hasPagination ? Math.ceil(count / limit) : 1;
 
-      // if (inUse) {
-      //   throw BaseError.badRequest(
-      //     "This deduction cannot be deleted because it is already used in payroll."
-      //   );
-      // }
+		return {
+			data,
+			meta: hasPagination
+				? {
+						totalItems: count,
+						totalPages,
+						currentPage: Number(page),
+						itemsPerPage: Number(limit),
+					}
+				: null,
+		};
+	}
 
-      const deleted = await tx.employeeDeductions.delete({
-        where: { id },
-      });
+	async update(currentUser, id, data) {
+		let validation = "";
+		const stack = [];
 
-      return {
-        message: "Employee Deduction deleted successfully",
-        //data: deleted
-      };
-    });
-  }
+		const fail = (msg, path) => {
+			validation += (validation ? " " : "") + msg;
+			stack.push({ message: msg, path: [path] });
+		};
+
+		if (!this.isAdmin(currentUser)) {
+			fail(
+				"Forbidden, only ADMIN is allowed to update Employee Deduction",
+				"role",
+			);
+			throw new Joi.ValidationError(validation, stack);
+		}
+
+		return this.prisma.$transaction(async (tx) => {
+			const current = await tx.employeeDeductions.findUnique({
+				where: { id },
+			});
+
+			if (!current) {
+				throw BaseError.notFound("Employee Deduction not found");
+			}
+
+			const payload = this.cleanPayload(data);
+
+			if (payload.user_id) {
+				const employee = await tx.user.findUnique({
+					where: { id: payload.user_id },
+				});
+
+				if (!employee) {
+					fail("Employee not found", "user_id");
+					throw new Joi.ValidationError(validation, stack);
+				}
+			}
+
+			if (payload.deduction_id) {
+				const deduction = await tx.deductions.findUnique({
+					where: { id: payload.deduction_id },
+				});
+
+				if (!deduction) {
+					fail("Deduction not found", "deduction_id");
+					throw new Joi.ValidationError(validation, stack);
+				}
+			}
+
+			const nextUserId = payload.user_id ?? current.user_id;
+			const nextDeductionId = payload.deduction_id ?? current.deduction_id;
+			const nextType = payload.type ?? current.type;
+			const nextEffectiveDate =
+				payload.effective_date ?? current.effective_date;
+
+			const duplicate = await tx.employeeDeductions.findFirst({
+				where: {
+					user_id: nextUserId,
+					deduction_id: nextDeductionId,
+					type: nextType,
+					effective_date: nextEffectiveDate,
+					id: {
+						not: id,
+					},
+				},
+			});
+
+			if (duplicate) {
+				fail(
+					"Employee already has this deduction with the same type and effective date",
+					"duplicate",
+				);
+				throw new Joi.ValidationError(validation, stack);
+			}
+
+			const updated = await tx.employeeDeductions.update({
+				where: { id },
+				data: payload,
+				include: employeeDeductionsQueryConfig.relations,
+			});
+
+			return updated;
+		});
+	}
+
+	async remove(id) {
+		return this.prisma.$transaction(async (tx) => {
+			const current = await tx.employeeDeductions.findUnique({
+				where: { id },
+			});
+
+			if (!current) {
+				throw BaseError.notFound("Employee Deduction not found");
+			}
+
+			await tx.employeeDeductions.delete({
+				where: { id },
+			});
+
+			return {
+				message: "Employee Deduction deleted successfully",
+			};
+		});
+	}
 }
 
 export default new EmployeeDeductionsService();

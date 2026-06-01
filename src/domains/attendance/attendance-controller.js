@@ -2,33 +2,79 @@ import { createdResponse, successResponse } from "../../utils/response.js";
 import attendanceService from "./attendance-service.js";
 
 class AttendanceController {
+	async create(req, res) {
+		const { type, ...body } = req.body;
 
-    async create(req, res) {
-        const data = {
-            ...req.body,
-            employeeId: req.user.id
-        };
+		if (!type) {
+			throw BaseError.badRequest("Attendance type is required");
+		}
 
-        const file = req.file;
+		const normalizedType = type.toUpperCase();
 
-        const result = await attendanceService.create(data, file);
-        return createdResponse(res, result);
-    }
+		if (!["CHECK_IN", "CHECK_OUT"].includes(normalizedType)) {
+			throw BaseError.badRequest("Invalid attendance type");
+		}
 
-    async today(req, res) {
-        const result = await attendanceService.today(req.user.id);
-        return successResponse(res, result);
-    }
+		const data = {
+			...body,
+			employeeId: body.employeeId || req.user.id,
+		};
 
-    async list(req, res) {
-        const result = await attendanceService.list({ query: req.query });
-        return successResponse(res, result.data);
-    }
+		const result = await attendanceService.create(
+			data,
+			req.file,
+			normalizedType,
+		);
 
-    async detail(req, res) {
-        const result = await attendanceService.detail(req.params.id);
-        return successResponse(res, result);
-    }
+		return createdResponse(res, result, "Attendance created successfully");
+	}
+
+	async checkIn(req, res) {
+		const result = await attendanceService.create(
+			{
+				...req.body,
+				employeeId: req.user.id,
+			},
+			req.file,
+			"CHECK_IN",
+		);
+
+		return successResponse(res, result, "Check-in successfully");
+	}
+
+	async checkOut(req, res) {
+		const result = await attendanceService.create(
+			{
+				...req.body,
+				employeeId: req.user.id,
+			},
+			req.file,
+			"CHECK_OUT",
+		);
+
+		return successResponse(res, result, "Check-out successfully");
+	}
+
+	async today(req, res) {
+		const result = await attendanceService.today(req.user.id);
+		return successResponse(res, result);
+	}
+
+	async list(req, res) {
+		const result = await attendanceService.list({ query: req.query });
+		return successResponse(res, result.data);
+	}
+
+	async detail(req, res) {
+		const result = await attendanceService.detail(req.params.id);
+		return successResponse(res, result);
+	}
+
+	async getConfig(req, res) {
+		const result = await attendanceService.getConfig();
+
+		return successResponse(res, result);
+	}
 }
 
 export default new AttendanceController();

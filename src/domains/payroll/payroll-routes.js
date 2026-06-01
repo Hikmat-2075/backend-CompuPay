@@ -7,34 +7,39 @@ import authTokenMiddleware from "../../middlewares/auth-token-middleware.js";
 import { payrollCreateSchema, payrollUpdateSchema } from "./payroll-schema.js";
 
 class PayrollRoutes extends BaseRoutes {
-  routes() {
-    this.router.get("/", [
-      authTokenMiddleware.authenticate,
-      tryCatch(PayrollController.list),
-    ]);
+	routes() {
+		this.router.get("/", [
+			authTokenMiddleware.authenticate,
+			tryCatch(PayrollController.list),
+		]);
 
-    this.router.get("/:id", [
-      authTokenMiddleware.authenticate,
-      tryCatch(PayrollController.detail),
-    ]);
+		this.router.get("/:id/download-pdf", [
+			authTokenMiddleware.authenticate,
+			tryCatch(PayrollController.downloadPdf),
+		]);
 
-    this.router.post("/", [
-      validateCredentials(payrollCreateSchema),
-      authTokenMiddleware.authenticate,
-      tryCatch(PayrollController.create),
-    ]);
+		this.router.get("/:id", [
+			authTokenMiddleware.authenticate,
+			tryCatch(PayrollController.detail),
+		]);
 
-    this.router.put("/:id", [
-      validateCredentials(payrollUpdateSchema),
-      authTokenMiddleware.authenticate,
-      tryCatch(PayrollController.update),
-    ]);
+		this.router.post("/", [
+			validateCredentials(payrollCreateSchema),
+			authTokenMiddleware.authenticate,
+			tryCatch(PayrollController.create),
+		]);
 
-    this.router.delete("/:id", [
-      authTokenMiddleware.authenticate,
-      tryCatch(PayrollController.remove),
-    ]);
-  }
+		this.router.put("/:id", [
+			validateCredentials(payrollUpdateSchema),
+			authTokenMiddleware.authenticate,
+			tryCatch(PayrollController.update),
+		]);
+
+		this.router.delete("/:id", [
+			authTokenMiddleware.authenticate,
+			tryCatch(PayrollController.remove),
+		]);
+	}
 }
 
 export default new PayrollRoutes().router;
