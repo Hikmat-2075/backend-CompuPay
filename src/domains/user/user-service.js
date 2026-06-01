@@ -144,9 +144,15 @@ class UserService {
   }
 
   async update(currentUser, id, data, file) {
-    if (currentUser.role !== "ADMIN" && currentUser.role !== "SUPER_ADMIN") {
+    const isSelf = currentUser.id === id;
+
+    const isAdmin =
+      currentUser.role === "ADMIN" ||
+      currentUser.role === "SUPER_ADMIN";
+
+    if (!isSelf && !isAdmin) {
       throw BaseError.forbidden(
-        "You do not have permission to create an admin",
+        "You do not have permission to update this user"
       );
     }
 

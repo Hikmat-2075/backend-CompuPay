@@ -128,8 +128,8 @@ class AttendanceService {
                 throw BaseError.badRequest("Invalid coordinates");
             }
 
-            const OFFICE_LAT = -6.2;
-            const OFFICE_LNG = 106.8;
+            const OFFICE_LAT = -6.97328316915612;
+            const OFFICE_LNG = 107.63041672764288;
             const MAX_RADIUS = 100; 
 
             const distance = getDistance(

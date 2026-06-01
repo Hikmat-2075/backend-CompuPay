@@ -30,12 +30,16 @@ function uploadFile(type = "image") {
 		const extValid = allowed.test(
 			path.extname(file.originalname).toLowerCase(),
 		);
-		const mimeValid = allowed.test(file.mimetype);
-
-		if (extValid && mimeValid) {
+		if (extValid) {
 			cb(null, true);
-		} else {
-			cb(new MulterError(400, `Only ${type} files are allowed.`), false);
+			} else {
+			cb(
+				new MulterError(
+				400,
+				`Only ${type} files are allowed.`,
+				),
+				false,
+			);
 		}
 	};
 
