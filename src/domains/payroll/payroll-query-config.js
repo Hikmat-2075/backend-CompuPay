@@ -31,7 +31,12 @@ const payrollQueryConfig = {
 
 	relations: {
 		payer: true,
-		employee: true,
+		employee: {
+			include: {
+				department: true,
+				position: true,
+			},
+		},
 	},
 
 	dateFields: {

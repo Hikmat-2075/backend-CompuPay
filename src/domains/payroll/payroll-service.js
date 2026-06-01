@@ -3,6 +3,7 @@ import { PrismaService } from "../../common/services/prisma.service.js";
 import Prisma from "@prisma/client";
 import { buildQueryOptions } from "../../utils/buildQueryOptions.js";
 import payrollQueryConfig from "./payroll-query-config.js";
+import PDFDocument from "pdfkit";
 import Joi from "joi";
 
 class PayrollService {
@@ -258,6 +259,145 @@ class PayrollService {
 			await tx.payroll.delete({ where: { id } });
 
 			return { message: "Payroll deleted successfully" };
+		});
+	}
+	async downloadPdf(currentUser, id) {
+		const payroll = await this.detail(currentUser, id);
+
+		return new Promise((resolve, reject) => {
+			const doc = new PDFDocument({ size: "A4", margin: 50 });
+			const buffers = [];
+
+			doc.on("data", buffers.push.bind(buffers));
+			doc.on("end", () => resolve(Buffer.concat(buffers)));
+			doc.on("error", reject);
+
+			const formatDate = (date) =>
+				date
+					? new Intl.DateTimeFormat("id-ID", {
+							day: "2-digit",
+							month: "long",
+							year: "numeric",
+						}).format(new Date(date))
+					: "-";
+
+			const formatCurrency = (value) =>
+				new Intl.NumberFormat("id-ID", {
+					style: "currency",
+					currency: "IDR",
+					minimumFractionDigits: 0,
+				}).format(Number(value || 0));
+
+			const employee = payroll.employee;
+			const department = employee?.department?.name ?? "-";
+			const position = employee?.position?.name ?? "-";
+
+			doc
+				.fontSize(20)
+				.font("Helvetica-Bold")
+				.text("CompuPay", { align: "center" });
+
+			doc
+				.moveDown(0.3)
+				.fontSize(14)
+				.text("PAYSLIP / SLIP GAJI", { align: "center" });
+
+			doc.moveDown(1.5);
+
+			doc.fontSize(10).font("Helvetica-Bold").text("Informasi Payroll");
+			doc.moveDown(0.5);
+
+			const info = [
+				["No. Referensi", payroll.ref_no],
+				[
+					"Periode",
+					`${formatDate(payroll.date_from)} - ${formatDate(payroll.date_to)}`,
+				],
+				["Tipe Payroll", payroll.type],
+				["Status", payroll.status],
+				["Tanggal Dibuat", formatDate(payroll.created_at)],
+				["Tanggal Dibayar", formatDate(payroll.paid_at)],
+			];
+
+			info.forEach(([label, value]) => {
+				doc
+					.font("Helvetica-Bold")
+					.text(label, 50, doc.y, { continued: true, width: 130 });
+				doc.font("Helvetica").text(`: ${value}`);
+			});
+
+			doc.moveDown(1);
+
+			doc.font("Helvetica-Bold").text("Informasi Karyawan");
+			doc.moveDown(0.5);
+
+			const employeeInfo = [
+				["Nama", employee?.full_name ?? "-"],
+				["Email", employee?.email ?? "-"],
+				["Nomor Karyawan", employee?.employee_number ?? "-"],
+				["Departemen", department],
+				["Posisi", position],
+			];
+
+			employeeInfo.forEach(([label, value]) => {
+				doc
+					.font("Helvetica-Bold")
+					.text(label, 50, doc.y, { continued: true, width: 130 });
+				doc.font("Helvetica").text(`: ${value}`);
+			});
+
+			doc.moveDown(1.5);
+
+			const startX = 50;
+			const tableWidth = 495;
+			const labelWidth = 330;
+			const amountWidth = tableWidth - labelWidth;
+			const rowHeight = 32;
+
+			const drawRow = (label, amount, y, bold = false) => {
+				doc.rect(startX, y, tableWidth, rowHeight).stroke();
+				doc
+					.moveTo(startX + labelWidth, y)
+					.lineTo(startX + labelWidth, y + rowHeight)
+					.stroke();
+
+				doc
+					.font(bold ? "Helvetica-Bold" : "Helvetica")
+					.fontSize(10)
+					.text(label, startX + 10, y + 10, { width: labelWidth - 20 });
+
+				doc.text(amount, startX + labelWidth + 10, y + 10, {
+					width: amountWidth - 20,
+					align: "right",
+				});
+			};
+
+			let y = doc.y;
+
+			doc.font("Helvetica-Bold").fontSize(11).text("Rincian Gaji", startX, y);
+			y += 25;
+
+			drawRow("Gaji Pokok", formatCurrency(payroll.salary), y);
+			y += rowHeight;
+			drawRow("Total Tunjangan", formatCurrency(payroll.allowance_amount), y);
+			y += rowHeight;
+			drawRow("Total Potongan", `- ${formatCurrency(payroll.deductions)}`, y);
+			y += rowHeight;
+			drawRow("Gaji Bersih", formatCurrency(payroll.net), y, true);
+
+			doc.moveDown(4);
+
+			doc
+				.fontSize(9)
+				.font("Helvetica")
+				.text(
+					"Dokumen ini dibuat secara otomatis oleh sistem CompuPay dan sah tanpa tanda tangan basah.",
+					50,
+					730,
+					{ align: "center" },
+				);
+
+			doc.end();
 		});
 	}
 }
