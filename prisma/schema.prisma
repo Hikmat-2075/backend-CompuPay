@@ -105,8 +105,6 @@ model User {
   paidPayrolls Payroll[] @relation("PayrollPaidBy")
   leaveRequest LeaveRequest[]
   attendances Attendance[]
-  notifications    Notification[]
-  device_tokens    UserDeviceToken[]
 
   @@map("users")
 }
@@ -290,41 +288,5 @@ model PointRecord {
 
   @@index([point])
   @@map("PointRecord")
-}
-
-enum NotificationType {
-  PAYROLL_PAID
-  PAYROLL_CANCELED
-  GENERAL
-}
-
-model Notification {
-  id         String           @id @default(uuid())
-  user_id    String
-  title      String
-  body       String
-  type       NotificationType @default(GENERAL)
-  data       Json?
-  is_read    Boolean          @default(false)
-  created_at DateTime         @default(now())
-  updated_at DateTime         @updatedAt
-
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@map("notifications")
-}
-
-model UserDeviceToken {
-  id         String   @id @default(uuid())
-  user_id    String
-  token      String   @unique
-  platform   String?
-  is_active  Boolean  @default(true)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@map("user_device_tokens")
 }
 

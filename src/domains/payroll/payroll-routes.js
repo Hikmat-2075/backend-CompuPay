@@ -13,11 +13,6 @@ class PayrollRoutes extends BaseRoutes {
 			tryCatch(PayrollController.list),
 		]);
 
-		this.router.get("/:id/download-pdf", [
-			authTokenMiddleware.authenticate,
-			tryCatch(PayrollController.downloadPdf),
-		]);
-
 		this.router.get("/:id", [
 			authTokenMiddleware.authenticate,
 			tryCatch(PayrollController.detail),

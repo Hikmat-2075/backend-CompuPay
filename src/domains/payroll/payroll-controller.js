@@ -58,18 +58,6 @@ class PayrollController {
 			result.meta,
 		);
 	}
-	async downloadPdf(req, res) {
-		const pdfBuffer = await payrollService.downloadPdf(req.user, req.params.id);
-
-		res.setHeader("Content-Type", "application/pdf");
-		res.setHeader(
-			"Content-Disposition",
-			`attachment; filename="payslip-${req.params.id}.pdf"`,
-		);
-		res.setHeader("Content-Length", pdfBuffer.length);
-
-		return res.send(pdfBuffer);
-	}
 }
 
 export default new PayrollController();
