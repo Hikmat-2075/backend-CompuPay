@@ -16,3 +16,13 @@ prisma/migrations
 
 # Local development
 package-lock.json
+
+src/config/firebase-service-account.json
+dist/config/firebase-service-account.json
+
+# OS files
+.DS_Store
+
+# User-uploaded runtime content (attendance photos, leave-request attachments)
+public/assets/attendance/
+public/assets/leave-requests/
